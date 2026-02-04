@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import Link from "next/link";
 import { motion } from "framer-motion";
 import { Github, Search, Menu, X } from "lucide-react";
 import { useState } from "react";
@@ -11,7 +11,7 @@ export function Header() {
     <header className="fixed top-0 left-0 right-0 h-16 bg-background/80 backdrop-blur-lg border-b border-border z-50">
       <div className="h-full px-6 flex items-center justify-between">
         {/* Logo */}
-        <Link to="/" className="flex items-center gap-3">
+        <Link href="/" className="flex items-center gap-3">
           <motion.div
             initial={{ rotate: -10, scale: 0.9 }}
             animate={{ rotate: 0, scale: 1 }}
@@ -33,13 +33,13 @@ export function Header() {
         {/* Desktop Navigation */}
         <nav className="hidden md:flex items-center gap-6">
           <Link
-            to="/docs"
+            href="/docs"
             className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
           >
             Docs
           </Link>
           <Link
-            to="/docs/examples"
+            href="/docs/examples"
             className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
           >
             Examples
@@ -131,14 +131,14 @@ export function Header() {
           className="md:hidden absolute top-16 left-0 right-0 bg-background border-b border-border py-4 px-6 space-y-2"
         >
           <Link
-            to="/docs"
+            href="/docs"
             className="block py-2 text-foreground font-medium"
             onClick={() => setIsMenuOpen(false)}
           >
             Documentation
           </Link>
           <Link
-            to="/docs/examples"
+            href="/docs/examples"
             className="block py-2 text-foreground font-medium"
             onClick={() => setIsMenuOpen(false)}
           >

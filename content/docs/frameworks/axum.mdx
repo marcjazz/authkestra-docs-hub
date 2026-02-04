@@ -3,203 +3,91 @@ title: Axum Integration
 description: Use authkestra-axum to integrate authentication into your Axum applications.
 ---
 
-Use `authkestra-axum` to integrate authentication into 
-your Axum applications with type-safe extractors and state management.
+`authkestra-axum` provides a seamless integration for Axum applications, offering type-safe extractors, state management, and automatic route generation for OAuth providers.
 
-## Overview
+## Introduction
 
-The Axum adapter provides:
-
-- `AuthSession` extractor for session-based auth
-- `AuthkestraState` for Axum state integration
-- Route helpers for automatic OAuth endpoint registration
-- Full support for Axum's `FromRef` pattern
-
-## Setup
-
-```toml title="Cargo.toml"
-[dependencies]
-authkestra = { version = "0.1.0", features = ["axum", "github"] }
-axum = "0.7"
-tower-cookies = "0.10"
-tokio = { version = "1", features = ["full"] }
-dotenvy = "0.15"
-```
+The Axum adapter simplifies the process of adding authentication to your web services. By leveraging Axum's powerful extractor pattern and state management, Authkestra allows you to protect routes and manage user sessions with minimal configuration.
 
 ## State Management
 
-Axum uses the `FromRef` trait for state extraction. Authkestra 
-provides `AuthkestraState` to simplify this:
+Authkestra integrates with Axum's state system via `AuthkestraState`. This struct holds the configuration and provider registry needed for authentication.
+
+### Implementing FromRef
+
+For applications with custom state, you should include `AuthkestraState` in your state struct and implement the `FromRef` trait. This enables the use of Authkestra extractors like `AuthSession`.
 
 ```rust
-use authkestra_axum::{Authkestra, AuthkestraState};
-use authkestra_core::SessionStore;
-use std::sync::Arc;
+use authkestra_axum::AuthkestraState;
+use axum::extract::FromRef;
 
-// Your app state can include AuthkestraState
 #[derive(Clone)]
 struct AppState {
-    authkestra_state: AuthkestraState,
-    // ... your other state fields
+    // Your other application state
+    auth_state: AuthkestraState,
 }
 
-// Implement FromRef for Axum extractors
-impl axum::extract::FromRef<AppState> for AuthkestraState {
+impl FromRef<AppState> for AuthkestraState {
     fn from_ref(state: &AppState) -> Self {
-        state.authkestra_state.clone()
-    }
-}
-
-impl axum::extract::FromRef<AppState> for Authkestra {
-    fn from_ref(state: &AppState) -> Self {
-        state.authkestra_state.authkestra.clone()
-    }
-}
-
-impl axum::extract::FromRef<AppState> for Arc<dyn SessionStore> {
-    fn from_ref(state: &AppState) -> Self {
-        state.authkestra_state.authkestra.session_store.clone()
+        state.auth_state.clone()
     }
 }
 ```
-
-## Extractors
-
-Use `AuthSession` to get the authenticated user:
-
-```rust
-use authkestra_axum::AuthSession;
-use axum::response::IntoResponse;
-
-async fn protected(session: AuthSession) -> impl IntoResponse {
-    let identity = &session.0.identity;
-    
-    // Access user data
-    let username = identity.username.as_deref().unwrap_or("Anonymous");
-    let email = identity.email.as_deref().unwrap_or("Not provided");
-    
-    format!("Hello {} ({})!", username, email)
-}
-
-// Optional session - returns Option<AuthSession>
-async fn maybe_protected(session: Option<AuthSession>) -> impl IntoResponse {
-    match session {
-        Some(s) => format!("Logged in as {}", s.0.identity.username.unwrap_or_default()),
-        None => "Not logged in".to_string(),
-    }
-}
-```
-
-<Callout type="info" title="Automatic 401">
-  If `AuthSession` extraction fails (no session or expired), 
-  Axum automatically returns a 401 Unauthorized response.
-</Callout>
 
 ## Multiple Providers
 
-Authkestra makes it easy to support multiple OAuth providers:
+Authkestra makes it easy to support multiple authentication providers (e.g., GitHub, Google, Discord) within a single application using a flexible builder pattern.
 
-```rust title="axum_oauth.rs"
-use authkestra_axum::{AuthSession, Authkestra, AuthkestraAxumExt, AuthkestraState};
+### Using the Builder Pattern
+
+You can configure multiple providers by chaining `.provider()` calls on the `Authkestra` builder. Each provider is typically wrapped in an `OAuth2Flow`.
+
+```rust
+use authkestra_axum::Authkestra;
 use authkestra_flow::OAuth2Flow;
-use authkestra_providers_discord::DiscordProvider;
 use authkestra_providers_github::GithubProvider;
 use authkestra_providers_google::GoogleProvider;
-use axum::{response::Html, routing::get, Router};
-use tower_cookies::CookieManagerLayer;
 
-#[tokio::main]
-async fn main() {
-    dotenvy::dotenv().ok();
+let github = GithubProvider::new(gh_id, gh_secret, gh_redirect);
+let google = GoogleProvider::new(go_id, go_secret, go_redirect);
 
-    let mut builder = Authkestra::builder();
+let authkestra = Authkestra::builder()
+    .provider(OAuth2Flow::new(github))
+    .provider(OAuth2Flow::new(google))
+    .session_store(my_session_store)
+    .build();
 
-    // --- GitHub ---
-    if let (Ok(client_id), Ok(client_secret)) = (
-        std::env::var("GITHUB_CLIENT_ID"),
-        std::env::var("GITHUB_CLIENT_SECRET"),
-    ) {
-        let provider = GithubProvider::new(
-            client_id,
-            client_secret,
-            "http://localhost:3000/auth/github/callback".to_string(),
-        );
-        builder = builder.provider(OAuth2Flow::new(provider));
-    }
-
-    // --- Google ---
-    if let (Ok(client_id), Ok(client_secret)) = (
-        std::env::var("GOOGLE_CLIENT_ID"),
-        std::env::var("GOOGLE_CLIENT_SECRET"),
-    ) {
-        let provider = GoogleProvider::new(
-            client_id,
-            client_secret,
-            "http://localhost:3000/auth/google/callback".to_string(),
-        );
-        builder = builder.provider(OAuth2Flow::new(provider));
-    }
-
-    // --- Discord ---
-    if let (Ok(client_id), Ok(client_secret)) = (
-        std::env::var("DISCORD_CLIENT_ID"),
-        std::env::var("DISCORD_CLIENT_SECRET"),
-    ) {
-        let provider = DiscordProvider::new(
-            client_id,
-            client_secret,
-            "http://localhost:3000/auth/discord/callback".to_string(),
-        );
-        builder = builder.provider(OAuth2Flow::new(provider));
-    }
-
-    let authkestra = builder.build();
-    let state = AuthkestraState::new(authkestra);
-
-    let app = Router::new()
-        .route("/", get(index))
-        .route("/protected", get(protected))
-        .authkestra_routes(&state.authkestra)
-        .layer(CookieManagerLayer::new())
-        .with_state(state);
-
-    println!("🚀 Server running at http://localhost:3000");
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
-    axum::serve(listener, app).await.unwrap();
-}
-
-async fn index() -> Html<&'static str> {
-    Html(r#"
-        <h1>Choose a login provider:</h1>
-        <ul>
-            <li><a href="/auth/github">Login with GitHub</a></li>
-            <li><a href="/auth/google">Login with Google</a></li>
-            <li><a href="/auth/discord">Login with Discord</a></li>
-        </ul>
-    "#)
-}
-
-async fn protected(session: AuthSession) -> Html<String> {
-    let identity = &session.0.identity;
-    Html(format!(
-        "<h1>Welcome!</h1><p>Logged in as {} via {}</p>",
-        identity.username.as_deref().unwrap_or("User"),
-        identity.provider_id
-    ))
-}
+let state = AppState {
+    auth_state: AuthkestraState { authkestra },
+};
 ```
 
-## Full Example
+## Router Integration
 
-<Callout type="tip" title="Environment Variables">
-  Create a `.env` file with your OAuth credentials:
-</Callout>
+Instead of manually defining endpoints for every provider, you can use the `axum_router()` method to automatically register all necessary authentication routes.
 
-```bash title=".env"
-GITHUB_CLIENT_ID=your_github_client_id
-GITHUB_CLIENT_SECRET=your_github_client_secret
-GOOGLE_CLIENT_ID=your_google_client_id
-GOOGLE_CLIENT_SECRET=your_google_client_secret
-DISCORD_CLIENT_ID=your_discord_client_id
-DISCORD_CLIENT_SECRET=your_discord_client_secret
+### Merging the Router
+
+The `axum_router()` method returns an Axum `Router` that you can merge into your main application. This automatically handles login redirection, callbacks, and logout for all configured providers.
+
+```rust
+use authkestra_axum::AuthkestraAxumExt;
+
+let app = Router::new()
+    .route("/", get(index))
+    .route("/protected", get(protected))
+    // Merge all Authkestra routes automatically
+    .merge(authkestra.axum_router()) 
+    .with_state(state);
 ```
+
+By default, this registers:
+- `GET /auth/:provider`: Initiates the login flow for a specific provider.
+- `GET /auth/:provider/callback`: Handles the OAuth2 callback.
+- `GET /auth/logout`: Clears the user session.
+
+## Conclusion
+
+With Authkestra's Axum integration, you can move from a single-provider setup to a multi-provider system by simply adding more providers to the builder. The rest of your application remains clean and focused on your business logic.
+
+For a complete working example featuring multiple providers and session management, see the [axum_oauth.rs](https://github.com/marcoruzzante/authkestra/blob/main/authkestra-examples/src/bin/axum_oauth.rs) file in the `authkestra-examples` directory on GitHub.

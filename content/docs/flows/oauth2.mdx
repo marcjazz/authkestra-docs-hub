@@ -34,10 +34,12 @@ grant process, including state management, code exchange, and user info retrieva
 Here's a complete example with GitHub OAuth:
 
 ```rust title="main.rs"
-use authkestra_axum::{AuthSession, Authkestra, AuthkestraAxumExt, AuthkestraState};
+use authkestra_axum::{AuthSession, Authkestra, AuthkestraAxumExt, AuthkestraState, SessionConfig};
 use authkestra_flow::OAuth2Flow;
 use authkestra_providers_github::GithubProvider;
+use authkestra_session::SessionStore;
 use axum::{response::IntoResponse, routing::get, Router};
+use std::sync::Arc;
 use tower_cookies::CookieManagerLayer;
 
 #[tokio::main]
@@ -45,24 +47,35 @@ async fn main() {
     dotenvy::dotenv().ok();
 
     // Configure the GitHub provider
-    let github = GithubProvider::new(
-        std::env::var("GITHUB_CLIENT_ID").expect("GITHUB_CLIENT_ID required"),
-        std::env::var("GITHUB_CLIENT_SECRET").expect("GITHUB_CLIENT_SECRET required"),
-        "http://localhost:3000/auth/github/callback".to_string(),
-    );
+    let client_id = std::env::var("AUTHKESTRA_GITHUB_CLIENT_ID").expect("GITHUB_CLIENT_ID required");
+    let client_secret = std::env::var("AUTHKESTRA_GITHUB_CLIENT_SECRET").expect("GITHUB_CLIENT_SECRET required");
+    let redirect_uri = std::env::var("AUTHKESTRA_GITHUB_REDIRECT_URI")
+        .unwrap_or_else(|_| "http://localhost:3000/auth/github/callback".to_string());
+
+    let github = GithubProvider::new(client_id, client_secret, redirect_uri);
+
+    // Session Store
+    let session_store: Arc<dyn SessionStore> = Arc::new(authkestra_session::MemoryStore::default());
 
     // Build Authkestra with OAuth2 flow
     let authkestra = Authkestra::builder()
         .provider(OAuth2Flow::new(github))
+        .session_store(session_store)
+        .session_config(SessionConfig {
+            secure: false, // Set to true in production with HTTPS
+            ..Default::default()
+        })
         .build();
 
-    let state = AuthkestraState::new(authkestra);
+    let state = AuthkestraState {
+        authkestra: authkestra.clone(),
+    };
 
     let app = Router::new()
         .route("/", get(|| async { "Home" }))
         .route("/protected", get(protected))
         // This adds /auth/github and /auth/github/callback
-        .authkestra_routes(&state.authkestra)
+        .merge(authkestra.axum_router())
         .layer(CookieManagerLayer::new())
         .with_state(state);
 

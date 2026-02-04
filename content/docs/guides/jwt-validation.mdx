@@ -1,0 +1,130 @@
+---
+title: JWT Management & Validation
+description: Learn how to manage and validate JWTs using authkestra-token, including offline validation with JWKS.
+---
+
+# JWT Management & Validation
+
+JSON Web Tokens (JWT) are a core component of modern authentication systems. They allow for secure, stateless communication between your services and clients. `authkestra-token` provides a robust set of utilities for both issuing your own tokens and validating third-party tokens from OpenID Connect (OIDC) providers.
+
+The library offers two main modes of operation:
+1. **Token Management**: Issuing and validating your application's own tokens using symmetric encryption (HS256).
+2. **Offline Validation**: Validating tokens from external providers locally using JSON Web Key Sets (JWKS).
+
+## Token Management
+
+The `TokenManager` is the primary interface for applications that need to handle their own token lifecycle, such as issuing a token after a user logs in with a password or providing machine-to-machine tokens.
+
+### Configuration
+
+To use the `TokenManager`, you initialize it with a secret key and an optional issuer.
+
+```rust
+use authkestra_token::TokenManager;
+
+let secret = b"your-256-bit-secret-key-here";
+let issuer = Some("https://auth.your-app.com".to_string());
+
+let token_manager = TokenManager::new(secret, issuer);
+```
+
+### Issuing Tokens
+
+`TokenManager` supports issuing tokens for two main scenarios:
+
+#### User Tokens
+These tokens include the user's `Identity` data, which is useful for propagating user information through your services.
+
+```rust
+use authkestra_core::Identity;
+
+let identity = Identity {
+    external_id: "user_456".to_string(),
+    email: Some("hello@authkestra.io".to_string()),
+    // ... other identity fields
+};
+
+let token = token_manager.issue_user_token(
+    identity,
+    3600, // Duration in seconds (1 hour)
+    Some("read:data write:data".to_string()) // Optional scopes
+)?;
+```
+
+#### Client Tokens (M2M)
+Used for service-to-service communication where a specific user identity is not involved.
+
+```rust
+let m2m_token = token_manager.issue_client_token(
+    "internal-service-a",
+    86400, // Duration in seconds (24 hours)
+    Some("internal:sync".to_string())
+)?;
+```
+
+### Validating Tokens
+
+Validation is performed using the same `TokenManager` instance. It automatically checks the signature and the expiration date.
+
+```rust
+match token_manager.validate_token(&received_token) {
+    Ok(claims) => {
+        println!("Valid token for subject: {}", claims.sub);
+        if let Some(identity) = claims.identity {
+            println!("User email: {:?}", identity.email);
+        }
+    },
+    Err(e) => eprintln!("Token validation failed: {}", e),
+}
+```
+
+## Offline Validation
+
+**Offline Validation** allows your application to verify the authenticity of a JWT issued by an external OIDC provider (like Google, Auth0, or Microsoft Entra) without making an API call to the provider's servers for every request.
+
+This is achieved by downloading the provider's public keys via a **JWKS (JSON Web Key Set)** endpoint and using them to verify the token signature locally.
+
+### How it Works
+
+The `JwksCache` acts as an **Offline Validator** by fetching and caching the public keys from the provider. It periodically refreshes these keys to ensure security and handle key rotation.
+
+### Usage Example
+
+To perform offline validation, you need the JWKS URI of your provider (usually found in their `.well-known/openid-configuration`).
+
+```rust
+use authkestra_token::offline_validation::{validate_jwt, JwksCache};
+use jsonwebtoken::{Algorithm, Validation};
+use std::time::Duration;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // 1. Initialize the JWKS Cache (Offline Validator)
+    // This example uses Google's public JWKS endpoint
+    let jwks_uri = "https://www.googleapis.com/oauth2/v3/certs".to_string();
+    let refresh_interval = Duration::from_secs(3600); // Refresh keys every hour
+
+    let cache = JwksCache::new(jwks_uri, refresh_interval).await?;
+
+    // 2. Configure the Validation rules
+    let mut validation = Validation::new(Algorithm::RS256);
+    validation.set_issuer(&["https://accounts.google.com"]);
+    // validation.set_audience(&["your-client-id"]);
+
+    // 3. Validate the token
+    let token = "eyJhbGciOiJSUzI1NiIs..."; // Token typically from Authorization header
+
+    match validate_jwt(token, &cache, &validation).await {
+        Ok(claims) => println!("Token verified! Subject: {:?}", claims.sub),
+        Err(e) => println!("Verification failed: {}", e),
+    }
+
+    Ok(())
+}
+```
+
+## Conclusion
+
+Whether you are building your own authentication flow or integrating with existing identity providers, `authkestra-token` provides the tools to handle JWTs securely and efficiently.
+
+For a full implementation example, including error handling and async integration, see the [`offline_validation.rs`](https://github.com/marcjazz/authkestra/blob/main/authkestra-examples/src/bin/offline_validation.rs) file in the `authkestra-examples` crate on GitHub.

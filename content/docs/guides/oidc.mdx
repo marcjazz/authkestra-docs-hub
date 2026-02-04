@@ -1,0 +1,83 @@
+---
+title: Generic OIDC Provider
+description: Learn how to integrate any OpenID Connect compatible identity provider with Authkestra.
+---
+
+# Generic OIDC Provider
+
+OpenID Connect (OIDC) is an identity layer built on top of the OAuth 2.0 protocol. It allows clients to verify the identity of the end-user based on the authentication performed by an Authorization Server, as well as to obtain basic profile information about the end-user in an interoperable and REST-like manner.
+
+While `authkestra` provides specialized providers for popular services like GitHub or Google, you can use the **Generic OIDC Provider** to connect to any OIDC-compliant service, such as:
+
+*   **Keycloak**
+*   **Auth0**
+*   **Okta**
+*   **Google** (using the generic OIDC flow instead of the specialized provider)
+*   **Microsoft Entra ID (Azure AD)**
+
+## Configuration
+
+To use the generic provider, you utilize the [`OidcProvider`](https://github.com/mscatena/authkestra/blob/main/authkestra-oidc/src/provider.rs) struct from the `authkestra-oidc` crate.
+
+### Required Fields
+
+When initializing an `OidcProvider`, the following fields are required:
+
+| Field | Description |
+| :--- | :--- |
+| `client_id` | The Unique identifier for your application provided by the OIDC issuer. |
+| `client_secret` | The secret key used to authenticate your application. |
+| `issuer_url` | The base URL of the OIDC provider (e.g., `https://accounts.google.com` or `https://{your-tenant}.auth0.com/`). |
+| `redirect_uri` | The URL where the provider will send the user after successful authentication. |
+
+## Discovery
+
+One of the main advantages of OIDC is **Discovery**. Instead of manually configuring multiple endpoints (authorization, token, JWKS, etc.), `authkestra` can automatically fetch this information.
+
+By providing the `issuer_url`, `authkestra` appends `/.well-known/openid-configuration` to the URL to fetch the provider's metadata. This metadata contains all the necessary endpoints and public keys (JWKS) required to validate tokens and complete the authentication flow.
+
+You can use the `OidcProvider::discover` method to perform this automatic configuration.
+
+## Example
+
+Here is a complete example of how to configure the `OidcProvider` and add it to your `Authkestra` instance using the Axum framework.
+
+```rust
+use authkestra_axum::{Authkestra, AuthkestraAxumExt};
+use authkestra_flow::OAuth2Flow;
+use authkestra_oidc::OidcProvider;
+use std::sync::Arc;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // 1. Define your OIDC settings
+    let issuer = "https://your-oidc-provider.com";
+    let client_id = "your-client-id".to_string();
+    let client_secret = "your-client-secret".to_string();
+    let redirect_uri = "http://localhost:3000/auth/oidc/callback".to_string();
+
+    // 2. Discover the provider metadata and initialize
+    let provider = OidcProvider::discover(
+        client_id,
+        client_secret,
+        redirect_uri,
+        issuer
+    ).await?;
+
+    // 3. Build Authkestra with the OIDC provider
+    let authkestra = Authkestra::builder()
+        .provider(OAuth2Flow::new(provider))
+        .build();
+
+    // 4. Use it in your application (e.g., with Axum)
+    // let app = Router::new().merge(authkestra.axum_router());
+    
+    Ok(())
+}
+```
+
+## Conclusion
+
+The Generic OIDC provider offers a flexible way to integrate with a wide variety of identity services without needing a custom implementation for each one.
+
+For a full working example using Axum and environment variables, check out the [`oidc_generic.rs`](https://github.com/mscatena/authkestra/blob/main/authkestra-examples/src/bin/oidc_generic.rs) file in the `authkestra-examples` crate.

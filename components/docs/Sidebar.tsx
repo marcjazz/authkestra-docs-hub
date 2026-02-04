@@ -1,4 +1,5 @@
-import { Link, useLocation } from "react-router-dom";
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { motion } from "framer-motion";
 import {
   BookOpen,
@@ -117,7 +118,7 @@ const navigation: NavItem[] = [
 ];
 
 export function Sidebar() {
-  const location = useLocation();
+  const pathname = usePathname();
 
   return (
     <aside className="fixed left-0 top-16 w-64 h-[calc(100vh-4rem)] bg-sidebar border-r border-sidebar-border overflow-y-auto scrollbar-thin">
@@ -126,7 +127,7 @@ export function Sidebar() {
           <SidebarSection
             key={section.href}
             section={section}
-            currentPath={location.pathname}
+            currentPath={pathname}
             delay={idx * 0.05}
           />
         ))}
@@ -220,7 +221,7 @@ function SidebarSection({ section, currentPath, delay }: SidebarSectionProps) {
           {section.children.map((child) => (
             <Link
               key={child.href}
-              to={child.href}
+              href={child.href}
               className={cn(
                 "nav-link block px-3 py-1.5 rounded-md transition-all duration-200",
                 currentPath === child.href

@@ -3,32 +3,14 @@ title: Actix-web Integration
 description: Use authkestra-actix to integrate authentication into your Actix-web applications.
 ---
 
-Use `authkestra-actix` to integrate authentication into 
-your Actix-web applications with type-safe extractors.
-
-## Overview
-
-The Actix adapter provides:
-
-- `AuthSession` extractor for session-based auth
-- `AuthToken` extractor for JWT-based auth
-- Route helpers for automatic OAuth endpoint registration
-- Session cookie management
-
-## Setup
-
-```toml title="Cargo.toml"
-[dependencies]
-authkestra = { version = "0.1.0", features = ["actix", "github", "session-sql"] }
-actix-web = "4"
-sqlx = { version = "0.7", features = ["runtime-tokio-rustls", "sqlite"] }
-tokio = { version = "1", features = ["full"] }
-dotenvy = "0.15"
-```
+`authkestra-actix` provides a seamless integration with [Actix Web](https://actix.rs/), offering type-safe extractors and helper functions to manage authentication flows with minimal boilerplate.
 
 ## Extractors
 
-`AuthSession` extracts the current user's session:
+Authkestra provides two primary extractors to identify users in your request handlers:
+
+### `AuthSession`
+Used for **session-based authentication** (standard web apps). It attempts to find a session ID in the request cookies and retrieves the associated user identity from the session store.
 
 ```rust
 use authkestra_actix::AuthSession;
@@ -44,139 +26,87 @@ async fn profile(session: AuthSession) -> impl Responder {
         "provider": identity.provider_id
     }))
 }
+```
 
-#[get("/dashboard")]
-async fn dashboard(session: AuthSession) -> impl Responder {
-    // If no valid session, AuthSession extraction fails with 401
-    HttpResponse::Ok().body(format!(
-        "Welcome to your dashboard, {}!",
-        session.0.identity.username.as_deref().unwrap_or("User")
-    ))
+### `AuthToken`
+Used for **JWT-based authentication** (SPAs or Mobile apps). It validates a JWT provided in the `Authorization: Bearer <token>` header.
+
+```rust
+use authkestra_actix::AuthToken;
+
+#[get("/api/protected")]
+async fn protected_resource(AuthToken(claims): AuthToken) -> impl Responder {
+    let identity = claims.identity.unwrap();
+    HttpResponse::Ok().body(format!("Hello, {}!", identity.username.unwrap_or_default()))
 }
 ```
 
-## Route Helpers
+## Route Registration
+
+The `actix_scope()` helper method automatically registers the necessary OAuth routes (`/auth/{provider}/login` and `/auth/{provider}/callback`) for all providers configured in your `Authkestra` instance.
 
 ```rust
 use authkestra_actix::AuthkestraActixExt;
 
 App::new()
-    .app_data(state.clone())
-    .service(index)
-    .service(protected)
-    // This adds:
-    // GET /auth/github - Initiates OAuth flow
-    // GET /auth/github/callback - Handles OAuth callback
-    .authkestra_routes(&authkestra)
+    .app_data(web::Data::new(authkestra.clone()))
+    .service(authkestra.actix_scope()) // Registers /auth/... routes
 ```
 
-## JWT Mode (SPA)
+---
 
-For single-page applications, use JWT tokens instead of session cookies:
+## SPA Example: JWT Authentication
+
+In a Single Page Application (SPA), you typically want the backend to exchange the OAuth code for a JWT that the frontend can store and use for subsequent requests.
+
+### 1. Configure the Token Manager
+To issue JWTs, you must provide a `TokenManager` to the `Authkestra` builder. This manager handles signing and verifying your application's tokens.
 
 ```rust
-use authkestra_actix::{AuthToken, handle_oauth_callback_jwt_erased};
-use authkestra_token::TokenManager;
+let token_manager = Arc::new(TokenManager::new(
+    b"a-very-secret-key-that-is-at-least-32-bytes-long!!",
+    None,
+));
 
-// Protected route using JWT
-#[get("/api/user")]
-async fn get_user(token: AuthToken) -> impl Responder {
-    // Token is validated automatically
-    HttpResponse::Ok().json(token.0.claims)
-}
+let authkestra = Authkestra::builder()
+    .provider(OAuth2Flow::new(GithubProvider::new(client_id, client_secret, redirect_uri)))
+    .token_manager(token_manager.clone())
+    .build();
+```
 
-// Callback that returns JWT instead of setting cookie
+### 2. Handle the OAuth Callback
+In SPA mode, your callback handler uses `handle_oauth_callback_jwt_erased`. Instead of setting a session cookie, this helper exchanges the OAuth code for an `AccessTokenResponse` containing your app's JWT.
+
+```rust
+use authkestra_actix::{handle_oauth_callback_jwt_erased, OAuthCallbackParams};
+
 #[get("/api/callback")]
-async fn jwt_callback(
-    query: web::Query<OAuthCallbackParams>,
-    auth: web::Data<Authkestra>,
-    token_manager: web::Data<TokenManager>,
+async fn callback_handler(
+    data: web::Data<AppState>,
+    params: web::Query<OAuthCallbackParams>,
+    req: actix_web::HttpRequest,
 ) -> impl Responder {
-    match handle_oauth_callback_jwt_erased(&auth, &token_manager, &query).await {
-        Ok(jwt) => HttpResponse::Ok().json(serde_json::json!({
-            "token": jwt,
-            "type": "Bearer"
-        })),
-        Err(e) => HttpResponse::Unauthorized().body(e.to_string())
+    let flow = &data.authkestra.providers["github"];
+
+    let res = handle_oauth_callback_jwt_erased(
+        flow,
+        &req,
+        params.into_inner(),
+        data.authkestra.token_manager.clone(),
+        3600, // Token expiration in seconds
+        &data.authkestra.session_config,
+    )
+    .await;
+
+    match res {
+        Ok(token_resp) => token_resp, // Returns JSON with access_token
+        Err(err) => HttpResponse::from_error(err),
     }
 }
 ```
 
-<Callout type="info" title="SPA Flow">
-  In SPA mode, the frontend receives the JWT and stores it (usually in localStorage). 
-  It then includes the token in the `Authorization: Bearer` header 
-  for API requests.
-</Callout>
+## Conclusion
 
-## Full Example
+By breaking down the authentication logic into extractors and specialized handlers, Authkestra allows you to support both traditional sessions and modern JWT-based flows with ease.
 
-```rust title="actix_github.rs"
-use actix_web::{get, web, App, HttpResponse, HttpServer, Responder};
-use authkestra_actix::{AuthSession, AuthkestraActixExt};
-use authkestra_core::{SessionConfig, SessionStore};
-use authkestra_flow::{Authkestra, OAuth2Flow};
-use authkestra_providers_github::GithubProvider;
-use authkestra_session::SqlStore;
-use sqlx::sqlite::SqlitePool;
-use std::sync::Arc;
-
-struct AppState {
-    authkestra: Authkestra,
-}
-
-#[get("/")]
-async fn index() -> impl Responder {
-    HttpResponse::Ok().body(r#"
-        <h1>Welcome!</h1>
-        <a href="/auth/github">Login with GitHub</a>
-    "#)
-}
-
-#[get("/protected")]
-async fn protected(session: AuthSession) -> impl Responder {
-    let name = session.0.identity.username.clone()
-        .unwrap_or_else(|| "Unknown".to_string());
-
-    HttpResponse::Ok().body(format!(
-        "<h1>Hello, {}!</h1><p>You are authenticated via GitHub.</p>",
-        name
-    ))
-}
-
-#[actix_web::main]
-async fn main() -> std::io::Result<()> {
-    dotenvy::dotenv().ok();
-
-    // Setup provider
-    let provider = GithubProvider::new(
-        std::env::var("GITHUB_CLIENT_ID").expect("GITHUB_CLIENT_ID required"),
-        std::env::var("GITHUB_CLIENT_SECRET").expect("GITHUB_CLIENT_SECRET required"),
-        "http://localhost:8080/auth/github/callback".to_string(),
-    );
-
-    // Setup session store
-    let pool = SqlitePool::connect("sqlite::memory:").await.unwrap();
-    sqlx::query("CREATE TABLE sessions (id TEXT PRIMARY KEY, data TEXT, expires_at INTEGER)")
-        .execute(&pool).await.unwrap();
-    let store = SqlStore::new(pool);
-
-    // Build Authkestra
-    let authkestra = Authkestra::builder()
-        .provider(OAuth2Flow::new(provider))
-        .session_store(store)
-        .build();
-
-    let state = web::Data::new(AppState { authkestra: authkestra.clone() });
-
-    HttpServer::new(move || {
-        App::new()
-            .app_data(state.clone())
-            .service(index)
-            .service(protected)
-            .authkestra_routes(&authkestra)  // Adds /auth/github and callback
-    })
-    .bind("127.0.0.1:8080")?
-    .run()
-    .await
-}
-```
+For a complete working implementation, including the frontend logic, check out the [actix_spa_jwt.rs](https://github.com/marcoruiz9/authkestra/blob/main/authkestra-examples/src/bin/actix_spa_jwt.rs) example in our GitHub repository.
