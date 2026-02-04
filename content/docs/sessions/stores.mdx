@@ -1,0 +1,154 @@
+---
+title: Session Stores
+description: Authkestra provides multiple session storage backends. Choose based on your deployment architecture and scaling requirements.
+---
+
+Authkestra provides multiple session storage backends. Choose based on your deployment architecture and scaling requirements.
+
+## Overview
+
+| Store | Best For | Persistence | Scaling |
+|-------|----------|-------------|---------|
+| **In-Memory** | Development, testing | None (lost on restart) | Single instance |
+| **Redis** | Production, high traffic | Optional (RDB/AOF) | Multi-instance |
+| **SQL** | Production, existing DB | Full persistence | Multi-instance |
+
+## In-Memory Store
+
+The default store for quick setup. Sessions are stored in memory and lost when the application restarts.
+
+```rust title="memory_store.rs"
+use authkestra_session::MemoryStore;
+
+// Create an in-memory session store (default)
+let store = MemoryStore::new();
+
+let authkestra = Authkestra::builder()
+    .provider(OAuth2Flow::new(provider))
+    .session_store(store)
+    .build();
+```
+
+<Callout type="warning" title="Not for Production">
+  In-memory store is not suitable for production. Sessions will be lost on restart, 
+  and it doesn't work in multi-instance deployments.
+</Callout>
+
+## Redis Store
+
+Redis is ideal for production deployments. It provides fast access, automatic expiration, and works across multiple application instances.
+
+```rust title="redis_store.rs"
+use authkestra_session::RedisStore;
+
+// Connect to Redis
+let store = RedisStore::new("redis://127.0.0.1:6379")
+    .await
+    .expect("Failed to connect to Redis");
+
+let authkestra = Authkestra::builder()
+    .provider(OAuth2Flow::new(provider))
+    .session_store(store)
+    .build();
+```
+
+Add the Redis feature to your dependencies:
+
+```toml title="Cargo.toml"
+[dependencies]
+authkestra = { version = "0.1.0", features = ["axum", "github", "session-redis"] }
+```
+
+<Callout type="tip" title="Redis Configuration">
+  In production, use Redis with authentication and TLS:
+  `redis://username:password@redis.example.com:6379/0`
+</Callout>
+
+## SQL Store
+
+SQL storage is perfect when you already have a database and want sessions alongside your application data.
+
+```rust title="sql_store.rs"
+use authkestra_session::SqlStore;
+use sqlx::sqlite::SqlitePool;
+
+// Connect to SQLite (also supports PostgreSQL, MySQL)
+let pool = SqlitePool::connect("sqlite::memory:").await?;
+
+// Create the sessions table
+sqlx::query(
+    "CREATE TABLE IF NOT EXISTS sessions (
+        id TEXT PRIMARY KEY,
+        data TEXT NOT NULL,
+        expires_at INTEGER NOT NULL
+    )"
+)
+.execute(&pool)
+.await?;
+
+// Create the SQL store
+let store = SqlStore::new(pool);
+
+let authkestra = Authkestra::builder()
+    .provider(OAuth2Flow::new(provider))
+    .session_store(store)
+    .build();
+```
+
+```toml title="Cargo.toml"
+[dependencies]
+authkestra = { version = "0.1.0", features = ["axum", "github", "session-sql"] }
+sqlx = { version = "0.7", features = ["runtime-tokio-rustls", "sqlite"] }
+```
+
+## Custom Store
+
+Implement the `SessionStore` trait for custom backends:
+
+```rust title="custom_store.rs"
+use async_trait::async_trait;
+use authkestra_core::{AuthError, Session, SessionStore};
+
+pub struct MongoStore {
+    collection: mongodb::Collection<Session>,
+}
+
+#[async_trait]
+impl SessionStore for MongoStore {
+    async fn create(&self, session: &Session) -> Result<(), AuthError> {
+        self.collection
+            .insert_one(session, None)
+            .await
+            .map_err(|e| AuthError::Internal(e.to_string()))?;
+        Ok(())
+    }
+
+    async fn get(&self, session_id: &str) -> Result<Option<Session>, AuthError> {
+        let filter = doc! { "id": session_id };
+        self.collection
+            .find_one(filter, None)
+            .await
+            .map_err(|e| AuthError::Internal(e.to_string()))
+    }
+
+    async fn delete(&self, session_id: &str) -> Result<(), AuthError> {
+        let filter = doc! { "id": session_id };
+        self.collection
+            .delete_one(filter, None)
+            .await
+            .map_err(|e| AuthError::Internal(e.to_string()))?;
+        Ok(())
+    }
+
+    async fn touch(&self, session_id: &str) -> Result<(), AuthError> {
+        // Update expiry timestamp
+        let filter = doc! { "id": session_id };
+        let update = doc! { "$set": { "expires_at": new_expiry } };
+        self.collection
+            .update_one(filter, update, None)
+            .await
+            .map_err(|e| AuthError::Internal(e.to_string()))?;
+        Ok(())
+    }
+}
+```

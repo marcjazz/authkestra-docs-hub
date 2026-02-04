@@ -1,0 +1,97 @@
+---
+title: Identity
+description: The Identity struct is the unified representation of an authenticated user in Authkestra.
+---
+
+The `Identity` struct is the unified representation of an 
+authenticated user in Authkestra, regardless of which provider they used.
+
+## Overview
+
+When a user authenticates via OAuth, OIDC, or direct credentials, Authkestra normalizes 
+their profile information into an `Identity`. This provides a 
+consistent interface for working with user data across all authentication methods.
+
+## Identity Struct
+
+```rust title="authkestra-core/src/identity.rs"
+use std::collections::HashMap;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Identity {
+    /// The provider that authenticated this identity (e.g., "github", "google")
+    pub provider_id: String,
+    
+    /// The unique identifier from the provider
+    pub external_id: String,
+    
+    /// The user's email address, if provided
+    pub email: Option<String>,
+    
+    /// The user's username or display name
+    pub username: Option<String>,
+    
+    /// Additional provider-specific attributes
+    pub attributes: HashMap<String, String>,
+}
+```
+
+### Fields
+
+| Field | Type | Description |
+| ----- | ---- | ----------- |
+| `provider_id` | `String` | Identifies the authentication provider (e.g., "github", "credentials") |
+| `external_id` | `String` | The user's unique ID from the provider |
+| `email` | `Option<String>` | Email address if available and consented |
+| `username` | `Option<String>` | Username or display name |
+| `attributes` | `HashMap<String, String>` | Additional provider-specific data |
+
+### Custom Attributes
+
+The `attributes` field allows providers to include additional 
+information that doesn't fit the standard fields. For example, GitHub might include:
+
+```rust
+// GitHub provider populates these attributes
+identity.attributes.insert("avatar_url".to_string(), user.avatar_url);
+identity.attributes.insert("html_url".to_string(), user.html_url);
+identity.attributes.insert("company".to_string(), user.company.unwrap_or_default());
+```
+
+<Callout type="info" title="Provider-Specific Data">
+  Check each provider's documentation for the attributes it populates. You can also 
+  implement custom providers that add domain-specific attributes.
+</Callout>
+
+## Working with Identity
+
+The identity is typically accessed through the session in your route handlers:
+
+```rust title="example.rs"
+use authkestra_axum::AuthSession;
+use axum::response::IntoResponse;
+
+async fn profile(session: AuthSession) -> impl IntoResponse {
+    let identity = &session.0.identity;
+    
+    // Access standard fields
+    let username = identity.username.as_deref().unwrap_or("Anonymous");
+    let email = identity.email.as_deref().unwrap_or("Not provided");
+    
+    // Access provider-specific attributes
+    let avatar = identity.attributes.get("avatar_url")
+        .map(|s| s.as_str())
+        .unwrap_or("/default-avatar.png");
+    
+    format!(
+        "User: {} | Email: {} | Avatar: {}",
+        username, email, avatar
+    )
+}
+```
+
+<Callout type="tip" title="Type Safety">
+  Consider creating a strongly-typed wrapper around Identity for your application 
+  that validates and converts the fields you need. This catches missing data at 
+  compile time rather than runtime.
+</Callout>

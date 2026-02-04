@@ -1,0 +1,91 @@
+---
+title: Installation
+description: Learn how to install Authkestra in your Rust project.
+---
+
+The easiest way to use Authkestra is via the facade crate with feature flags, 
+allowing you to manage your authentication stack from a single dependency.
+
+## Using the Facade Crate
+
+Add `authkestra` to your `Cargo.toml` with the features you need:
+
+```toml title="Cargo.toml"
+[dependencies]
+# Use the facade with the features you need
+authkestra = { version = "0.1.0", features = ["axum", "github"] }
+
+# Async runtime
+tokio = { version = "1", features = ["full"] }
+
+# For environment variables
+dotenvy = "0.15"
+```
+
+<Callout type="info" title="Feature Flags">
+  Authkestra uses Cargo features to enable only what you need. This keeps compile times 
+  fast and binary sizes small.
+</Callout>
+
+## Available Features
+
+| Feature | Description |
+| ------- | ----------- |
+| `axum` | Axum framework integration with extractors and route helpers |
+| `actix` | Actix-web framework integration |
+| `github` | GitHub OAuth provider |
+| `google` | Google OAuth provider |
+| `discord` | Discord OAuth provider |
+| `oidc` | OpenID Connect support with discovery and validation |
+| `session-redis` | Redis session store |
+| `session-sql` | SQL session store (Postgres, MySQL, SQLite) |
+
+You can combine multiple features:
+
+```toml title="Cargo.toml"
+[dependencies]
+authkestra = { version = "0.1.0", features = [
+    "axum",
+    "github",
+    "google",
+    "discord",
+    "oidc",
+    "session-sql"
+] }
+```
+
+## Using Individual Crates
+
+For advanced users, individual crates can be used independently:
+
+```toml title="Cargo.toml"
+[dependencies]
+authkestra-core = "0.1"
+authkestra-flow = "0.1"
+authkestra-axum = "0.1"
+authkestra-providers-github = "0.1"
+authkestra-session = { version = "0.1", features = ["sql"] }
+```
+
+<Callout type="tip" title="When to use individual crates">
+  Use individual crates when you need fine-grained control over versions, or when 
+  implementing custom providers or session stores that don't need the full stack.
+</Callout>
+
+## Runtime Requirements
+
+Authkestra is async-first and requires a Tokio runtime:
+
+```toml title="Cargo.toml"
+[dependencies]
+tokio = { version = "1", features = ["full"] }
+
+# Or minimal features for smaller binaries:
+tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+```
+
+<Callout type="warning" title="Environment Variables">
+  Most examples use `dotenvy` to load environment variables from 
+  a `.env` file. Make sure to add it to your dependencies if you're 
+  following along with the examples.
+</Callout>

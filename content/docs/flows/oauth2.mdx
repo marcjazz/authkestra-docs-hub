@@ -1,0 +1,101 @@
+---
+title: OAuth2 Flow
+description: The OAuth2 Authorization Code Grant is the most common flow for web applications.
+---
+
+The OAuth2 Authorization Code Grant is the most common flow for web applications 
+to authenticate users via third-party providers like GitHub, Google, or Discord.
+
+## Overview
+
+Authkestra's `OAuth2Flow` handles the complete authorization code 
+grant process, including state management, code exchange, and user info retrieval.
+
+## Authorization Code Grant
+
+### How It Works
+
+1. User clicks "Login with Provider"
+2. Your app redirects to the provider's authorization endpoint
+3. User authenticates and authorizes your app
+4. Provider redirects back with an authorization code
+5. Your app exchanges the code for tokens
+6. Your app fetches user info using the access token
+7. Session is created and user is logged in
+
+<Callout type="info" title="Automatic Routes">
+  When you call `.authkestra_routes()`, Authkestra automatically registers 
+  routes for each provider: `/auth/{provider}` (login) and 
+  `/auth/{provider}/callback` (callback).
+</Callout>
+
+## Implementation
+
+Here's a complete example with GitHub OAuth:
+
+```rust title="main.rs"
+use authkestra_axum::{AuthSession, Authkestra, AuthkestraAxumExt, AuthkestraState};
+use authkestra_flow::OAuth2Flow;
+use authkestra_providers_github::GithubProvider;
+use axum::{response::IntoResponse, routing::get, Router};
+use tower_cookies::CookieManagerLayer;
+
+#[tokio::main]
+async fn main() {
+    dotenvy::dotenv().ok();
+
+    // Configure the GitHub provider
+    let github = GithubProvider::new(
+        std::env::var("GITHUB_CLIENT_ID").expect("GITHUB_CLIENT_ID required"),
+        std::env::var("GITHUB_CLIENT_SECRET").expect("GITHUB_CLIENT_SECRET required"),
+        "http://localhost:3000/auth/github/callback".to_string(),
+    );
+
+    // Build Authkestra with OAuth2 flow
+    let authkestra = Authkestra::builder()
+        .provider(OAuth2Flow::new(github))
+        .build();
+
+    let state = AuthkestraState::new(authkestra);
+
+    let app = Router::new()
+        .route("/", get(|| async { "Home" }))
+        .route("/protected", get(protected))
+        // This adds /auth/github and /auth/github/callback
+        .authkestra_routes(&state.authkestra)
+        .layer(CookieManagerLayer::new())
+        .with_state(state);
+
+    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+    axum::serve(listener, app).await.unwrap();
+}
+
+async fn protected(session: AuthSession) -> impl IntoResponse {
+    format!("Hello, {}!", session.0.identity.username.unwrap_or_default())
+}
+```
+
+## PKCE Enhancement
+
+PKCE (Proof Key for Code Exchange) adds an extra layer of security to the OAuth 
+flow, preventing authorization code interception attacks.
+
+```rust
+use authkestra_flow::OAuth2Flow;
+
+// PKCE is enabled by default for providers that support it
+let flow = OAuth2Flow::new(provider)
+    .with_pkce(true); // Explicitly enable PKCE
+
+// For public clients (SPAs), PKCE is essential
+let spa_flow = OAuth2Flow::new(provider)
+    .with_pkce(true)
+    .with_scopes(vec!["read:user", "user:email"]);
+```
+
+<Callout type="tip" title="When to use PKCE">
+  Always use PKCE for:
+  - Single-page applications (SPAs)
+  - Mobile applications
+  - Any public client that can't securely store a client secret
+</Callout>

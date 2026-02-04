@@ -1,0 +1,138 @@
+---
+title: Error Handling
+description: Authkestra uses the AuthError enum for all authentication-related errors.
+---
+
+Authkestra uses the `AuthError` enum for all authentication-related 
+errors, providing type-safe error handling throughout your application.
+
+## AuthError Enum
+
+```rust title="authkestra-core/src/error.rs"
+use thiserror::Error;
+
+#[derive(Debug, Error)]
+pub enum AuthError {
+    #[error("Invalid credentials")]
+    InvalidCredentials,
+    
+    #[error("Session not found")]
+    SessionNotFound,
+    
+    #[error("Session expired")]
+    SessionExpired,
+    
+    #[error("Token expired")]
+    TokenExpired,
+    
+    #[error("Invalid token: {0}")]
+    InvalidToken(String),
+    
+    #[error("Provider error: {0}")]
+    ProviderError(String),
+    
+    #[error("OAuth error: {0}")]
+    OAuthError(String),
+    
+    #[error("Configuration error: {0}")]
+    ConfigurationError(String),
+    
+    #[error("Internal error: {0}")]
+    Internal(String),
+}
+```
+
+## Error Variants
+
+| Variant | When It Occurs | HTTP Status |
+| ------- | -------------- | ----------- |
+| `InvalidCredentials` | Username/password authentication fails | 401 Unauthorized |
+| `SessionNotFound` | Session cookie references non-existent session | 401 Unauthorized |
+| `SessionExpired` | Session exists but has expired | 401 Unauthorized |
+| `TokenExpired` | JWT has passed its expiration time | 401 Unauthorized |
+| `InvalidToken` | JWT signature invalid or malformed | 401 Unauthorized |
+| `ProviderError` | OAuth provider returned an error | 502 Bad Gateway |
+| `OAuthError` | Error during OAuth flow (state mismatch, etc.) | 400 Bad Request |
+| `ConfigurationError` | Missing or invalid configuration | 500 Internal Server Error |
+| `Internal` | Database or other internal errors | 500 Internal Server Error |
+
+## Handling Errors
+
+Use Rust's pattern matching to handle specific error cases:
+
+```rust title="example.rs"
+use authkestra_core::AuthError;
+
+async fn login(creds: LoginCredentials) -> Result<Response, AppError> {
+    match auth.authenticate(creds).await {
+        Ok(session) => Ok(create_session_response(session)),
+        
+        Err(AuthError::InvalidCredentials) => {
+            // Log failed attempt, maybe rate limit
+            Ok(Response::unauthorized("Invalid username or password"))
+        }
+        
+        Err(AuthError::Internal(msg)) => {
+            // Log internal error
+            tracing::error!("Auth internal error: {}", msg);
+            Err(AppError::InternalError)
+        }
+        
+        Err(e) => {
+            // Handle other errors
+            Ok(Response::bad_request(e.to_string()))
+        }
+    }
+}
+```
+
+## Custom Error Responses
+
+Implement `IntoResponse` to customize how errors are returned to clients:
+
+```rust title="example.rs"
+use axum::{
+    http::StatusCode,
+    response::{IntoResponse, Response},
+    Json,
+};
+use authkestra_core::AuthError;
+use serde_json::json;
+
+impl IntoResponse for AuthError {
+    fn into_response(self) -> Response {
+        let (status, message) = match &self {
+            AuthError::InvalidCredentials => {
+                (StatusCode::UNAUTHORIZED, "Invalid credentials")
+            }
+            AuthError::SessionNotFound | AuthError::SessionExpired => {
+                (StatusCode::UNAUTHORIZED, "Session invalid or expired")
+            }
+            AuthError::TokenExpired | AuthError::InvalidToken(_) => {
+                (StatusCode::UNAUTHORIZED, "Token invalid or expired")
+            }
+            AuthError::OAuthError(_) => {
+                (StatusCode::BAD_REQUEST, "OAuth authentication failed")
+            }
+            AuthError::ProviderError(_) => {
+                (StatusCode::BAD_GATEWAY, "Provider unavailable")
+            }
+            _ => {
+                (StatusCode::INTERNAL_SERVER_ERROR, "Internal error")
+            }
+        };
+
+        let body = Json(json!({
+            "error": message,
+            "code": status.as_u16()
+        }));
+
+        (status, body).into_response()
+    }
+}
+```
+
+<Callout type="tip" title="Error Logging">
+  Always log internal errors with context before returning them. Use a logging 
+  framework like `tracing` to capture error details for debugging.
+</Callout>

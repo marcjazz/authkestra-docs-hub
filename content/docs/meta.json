@@ -1,0 +1,27 @@
+{
+  "title": "Documentation",
+  "pages": [
+    "index",
+    "installation",
+    "quickstart",
+    "---Core---",
+    "core/identity",
+    "core/traits",
+    "core/errors",
+    "---Flows---",
+    "flows/oauth2",
+    "flows/credentials",
+    "flows/client-credentials",
+    "flows/device-flow",
+    "---Frameworks---",
+    "frameworks/actix",
+    "frameworks/axum",
+    "---Providers---",
+    "providers/github",
+    "providers/google",
+    "providers/discord",
+    "---Sessions---",
+    "sessions/config",
+    "sessions/stores"
+  ]
+}

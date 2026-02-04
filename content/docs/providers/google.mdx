@@ -1,0 +1,78 @@
+---
+title: Google
+description: Integrate Google OAuth2 authentication with OpenID Connect support.
+---
+
+Integrate Google OAuth2 authentication with OpenID Connect support.
+
+## Setup Guide
+
+### 1. Create Google OAuth Credentials
+
+1. Go to [Google Cloud Console](https://console.cloud.google.com/)
+2. Create a new project or select an existing one
+3. Navigate to **APIs & Services → Credentials**
+4. Click **Create Credentials → OAuth client ID**
+5. Select **Web application**
+6. Add authorized redirect URI: `http://localhost:3000/auth/google/callback`
+7. Copy the **Client ID** and **Client Secret**
+
+<Callout type="info" title="OAuth Consent Screen">
+  You'll need to configure the OAuth consent screen before creating credentials. 
+  For development, you can use "External" type and add yourself as a test user.
+</Callout>
+
+### 2. Configure Environment
+
+```bash title=".env"
+AUTHKESTRA_GOOGLE_CLIENT_ID=your_client_id.apps.googleusercontent.com
+AUTHKESTRA_GOOGLE_CLIENT_SECRET=your_client_secret
+AUTHKESTRA_GOOGLE_REDIRECT_URI=http://localhost:3000/auth/google/callback
+```
+
+## Implementation
+
+```rust
+use authkestra_flow::OAuth2Flow;
+use authkestra_providers_google::GoogleProvider;
+
+// Create the Google provider
+let provider = GoogleProvider::new(
+    std::env::var("AUTHKESTRA_GOOGLE_CLIENT_ID").unwrap(),
+    std::env::var("AUTHKESTRA_GOOGLE_CLIENT_SECRET").unwrap(),
+    std::env::var("AUTHKESTRA_GOOGLE_REDIRECT_URI")
+        .unwrap_or_else(|_| "http://localhost:3000/auth/google/callback".to_string()),
+);
+
+// Add to Authkestra
+let authkestra = Authkestra::builder()
+    .provider(OAuth2Flow::new(provider))
+    .build();
+```
+
+## Available Scopes
+
+| Scope | Description |
+|-------|-------------|
+| `openid` | OpenID Connect identity (default) |
+| `email` | User's email address |
+| `profile` | Basic profile info (name, picture) |
+
+```rust
+// Request specific scopes
+let flow = OAuth2Flow::new(provider)
+    .with_scopes(vec!["openid", "email", "profile"]);
+```
+
+### Identity Attributes
+
+Google provider populates these attributes:
+
+```rust
+// Google provider populates these attributes
+let picture = identity.attributes.get("picture");  // Profile photo URL
+let given_name = identity.attributes.get("given_name");
+let family_name = identity.attributes.get("family_name");
+let locale = identity.attributes.get("locale");
+let verified_email = identity.attributes.get("verified_email");
+```

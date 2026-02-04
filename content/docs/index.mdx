@@ -1,0 +1,93 @@
+---
+title: Introduction
+description: Authkestra is a modular, framework-agnostic authentication orchestration system for Rust.
+---
+
+Authkestra is a modular, framework-agnostic authentication orchestration 
+system for Rust, designed to be idiomatic and emphasize explicit control 
+flow, strong typing, and composability.
+
+## What is Authkestra?
+
+Unlike authentication solutions common in other ecosystems that rely heavily on 
+dynamic middleware and implicit context, Authkestra follows Rust's philosophy 
+of being **explicit and type-safe**. Authentication context is never 
+implicitly available—users must explicitly request it via extractors.
+
+```rust title="example.rs"
+use authkestra_axum::{AuthSession, Authkestra};
+
+// Explicit injection via extractors - no magic!
+async fn protected(session: AuthSession) -> impl IntoResponse {
+    let user = session.0.identity;
+    format!("Hello, {}!", user.username.unwrap_or_default())
+}
+```
+
+<Callout type="tip" title="Framework Agnostic Core">
+  The core authentication logic in `authkestra-flow` is 
+  pure Rust, completely independent of any web framework. Framework adapters like 
+  `authkestra-axum` provide the integration layer.
+</Callout>
+
+## Key Features
+
+<Cards>
+  <Card
+    title="Modular Design"
+    description="Strictly separated concerns with composable crates"
+  />
+  <Card
+    title="Explicit Control Flow"
+    description="No magic middleware or implicit context"
+  />
+  <Card
+    title="Provider Agnostic"
+    description="Easily implement new OAuth providers via traits"
+  />
+  <Card
+    title="Session & JWT Support"
+    description="Flexible session stores and stateless token management"
+  />
+</Cards>
+
+## Workspace Crates
+
+Authkestra is organized as a Cargo workspace with specialized crates for different 
+responsibilities. You can use the `authkestra` facade 
+crate with feature flags, or import individual crates directly.
+
+| Crate | Responsibility |
+| ----- | -------------- |
+| `authkestra` | Primary facade - re-exports all crates behind features |
+| `authkestra-core` | Foundational types and traits (Identity, OAuthProvider, SessionStore) |
+| `authkestra-flow` | Orchestrates OAuth2/OIDC flows (Authorization Code, PKCE, Device Flow) |
+| `authkestra-session` | Session persistence layer (Memory, Redis, SQL) |
+| `authkestra-token` | JWT signing, verification, and offline validation |
+| `authkestra-oidc` | OpenID Connect discovery and validation |
+| `authkestra-axum` | Axum integration with extractors and route helpers |
+| `authkestra-actix` | Actix-web integration |
+| `authkestra-providers-*` | Concrete provider implementations (GitHub, Google, Discord) |
+
+## Design Philosophy
+
+Authkestra favors **compile-time guarantees** over runtime flexibility:
+
+- **Trait-Based Extension:** Customization is achieved by implementing traits, not configuring dynamic strategies
+- **Explicit Injection:** Authentication context is never implicitly available; use extractors like `AuthSession`
+- **Framework Agnostic Core:** The flow crate is pure Rust logic, completely independent of any web framework
+
+## Next Steps
+
+<Cards>
+  <Card
+    title="Installation"
+    description="Add Authkestra to your project"
+    href="/docs/installation"
+  />
+  <Card
+    title="Quick Start"
+    description="Build your first auth flow"
+    href="/docs/quickstart"
+  />
+</Cards>

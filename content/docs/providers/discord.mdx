@@ -1,0 +1,83 @@
+---
+title: Discord
+description: Integrate Discord OAuth2 authentication for gaming and community applications.
+---
+
+Integrate Discord OAuth2 authentication for gaming and community applications.
+
+## Setup Guide
+
+### 1. Create Discord Application
+
+1. Go to [Discord Developer Portal](https://discord.com/developers/applications)
+2. Click **New Application**
+3. Give your application a name
+4. Go to **OAuth2 → General**
+5. Add redirect: `http://localhost:3000/auth/discord/callback`
+6. Copy the **Client ID** and **Client Secret**
+
+### 2. Configure Environment
+
+```bash title=".env"
+AUTHKESTRA_DISCORD_CLIENT_ID=your_client_id
+AUTHKESTRA_DISCORD_CLIENT_SECRET=your_client_secret
+AUTHKESTRA_DISCORD_REDIRECT_URI=http://localhost:3000/auth/discord/callback
+```
+
+## Implementation
+
+```rust
+use authkestra_flow::OAuth2Flow;
+use authkestra_providers_discord::DiscordProvider;
+
+// Create the Discord provider
+let provider = DiscordProvider::new(
+    std::env::var("AUTHKESTRA_DISCORD_CLIENT_ID").unwrap(),
+    std::env::var("AUTHKESTRA_DISCORD_CLIENT_SECRET").unwrap(),
+    std::env::var("AUTHKESTRA_DISCORD_REDIRECT_URI")
+        .unwrap_or_else(|_| "http://localhost:3000/auth/discord/callback".to_string()),
+);
+
+// Add to Authkestra
+let authkestra = Authkestra::builder()
+    .provider(OAuth2Flow::new(provider))
+    .build();
+```
+
+## Available Scopes
+
+| Scope | Description |
+|-------|-------------|
+| `identify` | Access user's username, discriminator, avatar (default) |
+| `email` | Access user's email address |
+| `guilds` | Access list of user's guilds (servers) |
+| `guilds.members.read` | Read user's guild member info |
+
+```rust
+// Request specific scopes
+let flow = OAuth2Flow::new(provider)
+    .with_scopes(vec!["identify", "email", "guilds"]);
+```
+
+### Identity Attributes
+
+```rust
+// Discord provider populates these attributes
+let discriminator = identity.attributes.get("discriminator");  // Discord tag #1234
+let avatar = identity.attributes.get("avatar");  // Avatar hash
+let banner = identity.attributes.get("banner");
+let premium_type = identity.attributes.get("premium_type");  // Nitro status
+
+// Build avatar URL
+let avatar_url = format!(
+    "https://cdn.discordapp.com/avatars/{}/{}.png",
+    identity.external_id,
+    identity.attributes.get("avatar").unwrap_or(&"".to_string())
+);
+```
+
+<Callout type="tip" title="Bot Integration">
+  If you're building a Discord bot, you can use the same OAuth flow to let users 
+  link their Discord accounts. Request the `bot` scope to add 
+  your bot to their servers.
+</Callout>

@@ -1,0 +1,80 @@
+---
+title: GitHub
+description: Integrate GitHub OAuth2 authentication into your application.
+---
+
+Integrate GitHub OAuth2 authentication into your application.
+
+## Setup Guide
+
+### 1. Create GitHub OAuth App
+
+1. Go to **GitHub Settings → Developer settings → OAuth Apps**
+2. Click **New OAuth App**
+3. Fill in the details:
+    - **Application name:** Your app name
+    - **Homepage URL:** `http://localhost:3000`
+    - **Authorization callback URL:** `http://localhost:3000/auth/github/callback`
+4. Click **Register application**
+5. Copy the **Client ID**
+6. Generate a **Client Secret** and copy it
+
+<Callout type="warning" title="Keep Your Secret Safe">
+  Never commit your client secret to version control. Use environment variables.
+</Callout>
+
+### 2. Configure Environment
+
+```bash title=".env"
+AUTHKESTRA_GITHUB_CLIENT_ID=your_client_id
+AUTHKESTRA_GITHUB_CLIENT_SECRET=your_client_secret
+AUTHKESTRA_GITHUB_REDIRECT_URI=http://localhost:3000/auth/github/callback
+```
+
+### 3. Implementation
+
+```rust
+use authkestra_flow::OAuth2Flow;
+use authkestra_providers_github::GithubProvider;
+
+// Create the provider
+let provider = GithubProvider::new(
+    std::env::var("AUTHKESTRA_GITHUB_CLIENT_ID").unwrap(),
+    std::env::var("AUTHKESTRA_GITHUB_CLIENT_SECRET").unwrap(),
+    std::env::var("AUTHKESTRA_GITHUB_REDIRECT_URI")
+        .unwrap_or_else(|_| "http://localhost:3000/auth/github/callback".to_string()),
+);
+
+// Add to Authkestra
+let authkestra = Authkestra::builder()
+    .provider(OAuth2Flow::new(provider))
+    .build();
+```
+
+### Available Scopes
+
+| Scope | Description |
+|-------|-------------|
+| `user` | Read/write access to profile info |
+| `user:email` | Read access to user's email addresses |
+| `read:user` | Read access to profile info (default) |
+| `repo` | Full control of private repositories |
+
+```rust
+// Request specific scopes
+let flow = OAuth2Flow::new(provider)
+    .with_scopes(vec!["read:user", "user:email"]);
+```
+
+### Identity Attributes
+
+GitHub provider populates these additional attributes:
+
+```rust
+// Available in identity.attributes
+let avatar_url = identity.attributes.get("avatar_url");
+let html_url = identity.attributes.get("html_url");  // GitHub profile URL
+let company = identity.attributes.get("company");
+let location = identity.attributes.get("location");
+let bio = identity.attributes.get("bio");
+```

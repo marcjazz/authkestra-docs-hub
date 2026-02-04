@@ -1,0 +1,197 @@
+---
+title: Quick Start
+description: Build your first auth flow with Authkestra and Axum.
+---
+
+This guide walks you through creating a simple web application with GitHub OAuth 
+authentication using Authkestra and Axum.
+
+## Prerequisites
+
+- Rust 1.70 or later
+- A GitHub OAuth application (we'll create one below)
+- Basic familiarity with Axum or async Rust
+
+## Project Setup
+
+Create a new Rust project and add the dependencies:
+
+```bash
+cargo new authkestra-demo
+cd authkestra-demo
+```
+
+Update your `Cargo.toml`:
+
+```toml title="Cargo.toml"
+[package]
+name = "authkestra-demo"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+authkestra = { version = "0.1.0", features = ["axum", "github"] }
+axum = "0.7"
+tokio = { version = "1", features = ["full"] }
+tower-cookies = "0.10"
+dotenvy = "0.15"
+```
+
+## GitHub OAuth Setup
+
+Create a GitHub OAuth application:
+
+1. Go to **GitHub Settings → Developer settings → OAuth Apps → New OAuth App**
+2. Set the **Homepage URL** to `http://localhost:3000`
+3. Set the **Authorization callback URL** to `http://localhost:3000/auth/github/callback`
+4. Copy your Client ID and Client Secret
+
+Create a `.env` file:
+
+```bash title=".env"
+GITHUB_CLIENT_ID=your_client_id_here
+GITHUB_CLIENT_SECRET=your_client_secret_here
+```
+
+<Callout type="warning" title="Security">
+  Never commit your `.env` file to version control. 
+  Add it to your `.gitignore`.
+</Callout>
+
+## Full Example
+
+Here's a complete working example:
+
+```rust title="src/main.rs"
+use authkestra_axum::{AuthSession, Authkestra, AuthkestraAxumExt, AuthkestraState};
+use authkestra_core::SessionStore;
+use authkestra_flow::OAuth2Flow;
+use authkestra_providers_github::GithubProvider;
+use axum::{
+    response::{Html, IntoResponse},
+    routing::get,
+    Router,
+};
+use std::sync::Arc;
+use tower_cookies::CookieManagerLayer;
+
+#[derive(Clone)]
+struct AppState {
+    authkestra_state: AuthkestraState,
+}
+
+// Implement FromRef for Axum's state extraction
+impl axum::extract::FromRef<AppState> for AuthkestraState {
+    fn from_ref(state: &AppState) -> Self {
+        state.authkestra_state.clone()
+    }
+}
+
+impl axum::extract::FromRef<AppState> for Authkestra {
+    fn from_ref(state: &AppState) -> Self {
+        state.authkestra_state.authkestra.clone()
+    }
+}
+
+impl axum::extract::FromRef<AppState> for Arc<dyn SessionStore> {
+    fn from_ref(state: &AppState) -> Self {
+        state.authkestra_state.authkestra.session_store.clone()
+    }
+}
+
+#[tokio::main]
+async fn main() {
+    // Load environment variables
+    dotenvy::dotenv().ok();
+
+    // Get OAuth credentials from environment
+    let client_id = std::env::var("GITHUB_CLIENT_ID")
+        .expect("GITHUB_CLIENT_ID must be set");
+    let client_secret = std::env::var("GITHUB_CLIENT_SECRET")
+        .expect("GITHUB_CLIENT_SECRET must be set");
+    let redirect_uri = "http://localhost:3000/auth/github/callback".to_string();
+
+    // Create the GitHub provider
+    let provider = GithubProvider::new(client_id, client_secret, redirect_uri);
+
+    // Build Authkestra with the provider
+    let authkestra = Authkestra::builder()
+        .provider(OAuth2Flow::new(provider))
+        .build();
+
+    let authkestra_state = AuthkestraState::new(authkestra);
+    let state = AppState { authkestra_state };
+
+    // Build the router with authentication routes
+    let app = Router::new()
+        .route("/", get(index))
+        .route("/protected", get(protected))
+        .authkestra_routes(&state.authkestra_state.authkestra)
+        .layer(CookieManagerLayer::new())
+        .with_state(state);
+
+    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
+    println!("🚀 Server running at http://localhost:3000");
+    axum::serve(listener, app).await.unwrap();
+}
+
+async fn index() -> impl IntoResponse {
+    Html(r#"
+        <h1>Welcome to Authkestra Demo</h1>
+        <p><a href="/auth/github">Login with GitHub</a></p>
+        <p><a href="/protected">Protected Page</a></p>
+    "#)
+}
+
+async fn protected(session: AuthSession) -> impl IntoResponse {
+    let identity = &session.0.identity;
+    Html(format!(
+        r#"
+        <h1>Protected Page</h1>
+        <p>Hello, {}!</p>
+        <p>Email: {}</p>
+        <p>Provider: {}</p>
+        <p><a href="/">Home</a></p>
+        "#,
+        identity.username.clone().unwrap_or_else(|| "Unknown".to_string()),
+        identity.email.clone().unwrap_or_else(|| "Not provided".to_string()),
+        identity.provider_id
+    ))
+}
+```
+
+## Testing the Flow
+
+Run the application:
+
+```bash
+cargo run
+```
+
+Then:
+
+1. Visit `http://localhost:3000`
+2. Click "Login with GitHub"
+3. Authorize the application on GitHub
+4. You'll be redirected back and can access the protected page
+
+<Callout type="tip" title="What's happening?">
+  Authkestra automatically registers the `/auth/github` and 
+  `/auth/github/callback` routes. The `AuthSession` extractor 
+  validates the session cookie and provides access to the user's identity.
+</Callout>
+
+## Next Steps
+
+<Cards>
+  <Card
+    title="Core Concepts"
+    description="Learn about Identity and traits"
+    href="/docs/core/identity"
+  />
+  <Card
+    title="OAuth2 Flows"
+    description="Understand the authentication flow"
+    href="/docs/flows/oauth2"
+  />
+</Cards>

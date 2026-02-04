@@ -1,0 +1,111 @@
+---
+title: Session Configuration
+description: Configure session behavior including TTL, cookie settings, and security options.
+---
+
+Configure session behavior including TTL, cookie settings, and security options.
+
+## SessionConfig
+
+```rust title="session_config.rs"
+use authkestra_core::SessionConfig;
+use std::time::Duration;
+
+let config = SessionConfig {
+    // Session time-to-live
+    ttl: Duration::from_secs(24 * 60 * 60), // 24 hours
+    
+    // Cookie name
+    cookie_name: "authkestra_session".to_string(),
+    
+    // Cookie path
+    cookie_path: "/".to_string(),
+    
+    // Secure cookie (HTTPS only)
+    cookie_secure: true,
+    
+    // HTTP-only cookie (no JavaScript access)
+    cookie_http_only: true,
+    
+    // Same-site policy
+    cookie_same_site: SameSite::Lax,
+};
+
+let authkestra = Authkestra::builder()
+    .provider(OAuth2Flow::new(provider))
+    .session_config(config)
+    .build();
+```
+
+## Cookie Settings
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| `cookie_name` | `"authkestra_session"` | Name of the session cookie |
+| `cookie_path` | `"/"` | Path scope for the cookie |
+| `cookie_secure` | `true` | Only send over HTTPS |
+| `cookie_http_only` | `true` | Prevent JavaScript access |
+| `cookie_same_site` | `Lax` | Same-site policy (Strict, Lax, None) |
+
+<Callout type="warning" title="Development Mode">
+  Set `cookie_secure: false` for local development without HTTPS. 
+  Always enable it in production.
+</Callout>
+
+## TTL Strategies
+
+Choose a TTL based on your security requirements:
+
+```rust
+// Short-lived sessions (high security)
+let config = SessionConfig {
+    ttl: Duration::from_secs(30 * 60), // 30 minutes
+    ..Default::default()
+};
+
+// Standard web app
+let config = SessionConfig {
+    ttl: Duration::from_secs(24 * 60 * 60), // 24 hours
+    ..Default::default()
+};
+
+// "Remember me" sessions
+let config = SessionConfig {
+    ttl: Duration::from_secs(30 * 24 * 60 * 60), // 30 days
+    ..Default::default()
+};
+```
+
+<Callout type="tip" title="Sliding Expiration">
+  Use the `touch()` method to extend session life on activity. 
+  This implements sliding expiration where active users stay logged in.
+</Callout>
+
+## Security Options
+
+Same-site cookie policies explained:
+
+| Policy | Behavior | Use Case |
+|--------|----------|----------|
+| `Strict` | Never sent cross-site | Maximum security, may affect OAuth redirects |
+| `Lax` | Sent on top-level navigations | Recommended for most apps |
+| `None` | Sent on all requests | Required for cross-site embeds (requires Secure) |
+
+```rust
+use tower_cookies::cookie::SameSite;
+
+// For OAuth flows, Lax is recommended
+let config = SessionConfig {
+    cookie_same_site: SameSite::Lax,
+    cookie_secure: true,
+    cookie_http_only: true,
+    ..Default::default()
+};
+
+// For embedded widgets or cross-origin requests
+let config = SessionConfig {
+    cookie_same_site: SameSite::None,
+    cookie_secure: true, // Required for SameSite=None
+    ..Default::default()
+};
+```
