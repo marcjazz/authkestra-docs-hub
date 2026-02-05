@@ -17,8 +17,8 @@ use authkestra_actix::AuthSession;
 use actix_web::{get, HttpResponse, Responder};
 
 #[get("/profile")]
-async fn profile(session: AuthSession) -> impl Responder {
-    let identity = &session.0.identity;
+async fn profile(AuthSession(session): AuthSession) -> impl Responder {
+    let identity = &session.identity;
     
     HttpResponse::Ok().json(serde_json::json!({
         "username": identity.username,
@@ -58,6 +58,14 @@ App::new()
 ## SPA Example: JWT Authentication
 
 In a Single Page Application (SPA), you typically want the backend to exchange the OAuth code for a JWT that the frontend can store and use for subsequent requests.
+
+### SPA Flow and Redirect URI
+
+For SPA use cases:
+1. The `redirect_uri` in your OAuth provider configuration should point to a **frontend route** (e.g., `https://myapp.com/callback`).
+2. Your frontend route should extract the `code` and `state` from the URL.
+3. The frontend then performs a **POST** request to your backend's callback endpoint (e.g., `/api/auth/callback`) with these parameters.
+4. The backend uses `handle_oauth_callback_jwt_erased` to exchange the code for a JWT and returns it to the frontend.
 
 ### 1. Configure the Token Manager
 To issue JWTs, you must provide a `TokenManager` to the `Authkestra` builder. This manager handles signing and verifying your application's tokens.
@@ -102,6 +110,46 @@ async fn callback_handler(
         Ok(token_resp) => token_resp, // Returns JSON with access_token
         Err(err) => HttpResponse::from_error(err),
     }
+}
+```
+
+## Offline Validation
+
+`authkestra-actix` provides a `Jwt<T>` extractor for offline token validation. This is useful for resource servers that need to validate tokens issued by external OIDC providers (like Google or Auth0) using their JWKS endpoint.
+
+### Configuration
+
+You need to register `Arc<JwksCache>` and `jsonwebtoken::Validation` in your `app_data`.
+
+```rust
+use authkestra_token::offline_validation::JwksCache;
+use jsonwebtoken::{Algorithm, Validation};
+
+let jwks_uri = "https://www.googleapis.com/oauth2/v3/certs".to_string();
+let jwks_cache = Arc::new(JwksCache::new(jwks_uri, Duration::from_secs(3600)).await?);
+
+let mut validation = Validation::new(Algorithm::RS256);
+validation.set_issuer(&["https://accounts.google.com"]);
+
+App::new()
+    .app_data(web::Data::new(jwks_cache.clone()))
+    .app_data(web::Data::new(validation.clone()))
+```
+
+### Usage
+
+```rust
+use authkestra_actix::Jwt;
+use serde::Deserialize;
+
+#[derive(Deserialize)]
+struct MyClaims {
+    sub: String,
+}
+
+#[get("/api/external")]
+async fn external_api(Jwt(claims): Jwt<MyClaims>) -> impl Responder {
+    HttpResponse::Ok().json(claims)
 }
 ```
 

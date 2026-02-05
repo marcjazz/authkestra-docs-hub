@@ -34,6 +34,52 @@ impl FromRef<AppState> for AuthkestraState {
 }
 ```
 
+## Extractors
+
+Authkestra provides several extractors to simplify authentication in your handlers.
+
+### `AuthSession`
+
+Used for session-based authentication.
+
+```rust
+use authkestra_axum::AuthSession;
+
+async fn profile(AuthSession(session): AuthSession) -> String {
+    format!("Welcome back, {}!", session.identity.username.unwrap_or_default())
+}
+```
+
+### `AuthToken`
+
+Used for JWT-based authentication.
+
+```rust
+use authkestra_axum::AuthToken;
+
+async fn api_handler(AuthToken(claims): AuthToken) -> String {
+    format!("Hello user with ID: {}", claims.sub)
+}
+```
+
+### `Jwt<T>` (Offline Validation)
+
+Used for validating tokens from external providers using JWKS.
+
+```rust
+use authkestra_axum::Jwt;
+use serde::Deserialize;
+
+#[derive(Deserialize)]
+struct MyClaims {
+    sub: String,
+}
+
+async fn external_api_handler(Jwt(claims): Jwt<MyClaims>) -> String {
+    format!("Hello external user: {}", claims.sub)
+}
+```
+
 ## Multiple Providers
 
 Authkestra makes it easy to support multiple authentication providers (e.g., GitHub, Google, Discord) within a single application using a flexible builder pattern.
@@ -85,6 +131,18 @@ By default, this registers:
 - `GET /auth/:provider`: Initiates the login flow for a specific provider.
 - `GET /auth/:provider/callback`: Handles the OAuth2 callback.
 - `GET /auth/logout`: Clears the user session.
+
+## SPA Example: JWT Authentication
+
+In a Single Page Application (SPA), you typically want the backend to exchange the OAuth code for a JWT that the frontend can store and use for subsequent requests.
+
+### SPA Flow and Redirect URI
+
+For SPA use cases:
+1. The `redirect_uri` in your OAuth provider configuration should point to a **frontend route** (e.g., `https://myapp.com/callback`).
+2. Your frontend route should extract the `code` and `state` from the URL.
+3. The frontend then performs a **POST** request to your backend's callback endpoint (e.g., `/api/auth/callback`) with these parameters.
+4. The backend uses `handle_oauth_callback_jwt` to exchange the code for a JWT and returns it to the frontend.
 
 ## Conclusion
 
