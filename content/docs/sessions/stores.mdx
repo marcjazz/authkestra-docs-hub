@@ -13,6 +13,37 @@ Authkestra provides multiple session storage backends. Choose based on your depl
 | **Redis** | Production, high traffic | Optional (RDB/AOF) | Multi-instance |
 | **SQL** | Production, existing DB | Full persistence | Multi-instance |
 
+
+## SessionStore Trait
+
+The `SessionStore` trait handles session persistence. Authkestra 
+provides implementations for memory, Redis, and SQL databases.
+
+```rust title="authkestra-session/src/lib.rs"
+use async_trait::async_trait;
+use authkestra_core::{AuthError, Session, SessionStore};
+
+#[async_trait]
+pub trait SessionStore: Send + Sync {
+    /// Create a new session
+    async fn create(&self, session: &Session) -> Result<(), AuthError>;
+    
+    /// Retrieve a session by ID
+    async fn get(&self, session_id: &str) -> Result<Option<Session>, AuthError>;
+    
+    /// Delete a session
+    async fn delete(&self, session_id: &str) -> Result<(), AuthError>;
+    
+    /// Update session expiry
+    async fn touch(&self, session_id: &str) -> Result<(), AuthError>;
+}
+```
+
+<Callout type="tip" title="Custom Session Stores">
+  You can implement custom session stores for databases like MongoDB, DynamoDB, or 
+  any other storage backend by implementing this trait.
+</Callout>
+
 ## In-Memory Store
 
 The default store for quick setup. Sessions are stored in memory and lost when the application restarts.
