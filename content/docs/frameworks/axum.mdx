@@ -11,23 +11,45 @@ The Axum adapter simplifies the process of adding authentication to your web ser
 
 ## State Management
 
-Authkestra integrates with Axum's state system via `AuthkestraState`. This struct holds the configuration and provider registry needed for authentication.
+Authkestra integrates with Axum's state system via `AuthkestraState`. This struct holds the configuration and provider registry required for authentication.
 
-### Implementing FromRef
+Depending on your application's needs, you can use `AuthkestraState` in two ways:
 
-For applications with custom state, you should include `AuthkestraState` in your state struct and implement the `FromRef` trait. This enables the use of Authkestra extractors like `AuthSession`.
+### Using AuthkestraState Directly
+
+If your application does not require any additional custom state, you can use `AuthkestraState` directly as your application state:
 
 ```rust
 use authkestra_axum::AuthkestraState;
+use axum::Router;
+
+// ... configure authkestra ...
+
+let state = AuthkestraState { authkestra };
+
+let app = Router::new()
+    .merge(authkestra.axum_router())
+    .with_state(state);
+```
+
+### Integration with Custom State
+
+If your application already manages its own state, you should include `Authkestra` as a field within your custom state struct and implement the `FromRef` trait. This allows Authkestra's extractors (like `AuthSession`) to access the authentication configuration.
+
+```rust
+use authkestra_flow::Authkestra;
 use axum::extract::FromRef;
 
 #[derive(Clone)]
 struct AppState {
-    // Your other application state
-    auth_state: AuthkestraState,
+    // Your other application state (e.g., database pool)
+    pub db_pool: MyDbPool,
+    /// Authkestra configuration
+    pub auth_state: Authkestra,
 }
 
-impl FromRef<AppState> for AuthkestraState {
+// Implement FromRef to allow extractors to find AuthkestraState
+impl FromRef<AppState> for Authkestra {
     fn from_ref(state: &AppState) -> Self {
         state.auth_state.clone()
     }
@@ -151,4 +173,4 @@ For SPA use cases:
 
 With Authkestra's Axum integration, you can move from a single-provider setup to a multi-provider system by simply adding more providers to the builder. The rest of your application remains clean and focused on your business logic.
 
-For a complete working example featuring multiple providers and session management, see the [axum_oauth.rs](https://github.com/mscatena/authkestra/blob/main/authkestra-examples/src/bin/axum_oauth.rs) file in the `authkestra-examples` directory on GitHub.
+For a complete working example featuring multiple providers and session management, see the [axum_oauth.rs](https://github.com/marcjazz/authkestra/blob/main/authkestra-examples/src/bin/axum_oauth.rs) file in the `authkestra-examples` directory on GitHub.

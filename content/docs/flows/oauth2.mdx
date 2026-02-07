@@ -1,10 +1,7 @@
 ---
 title: OAuth2 Flow
-description: The OAuth2 Authorization Code Grant is the most common flow for web applications.
+description: The OAuth2 Authorization Code Grant is the most common flow for web applications to authenticate users via third-party providers like GitHub, Google, or Discord.
 ---
-
-The OAuth2 Authorization Code Grant is the most common flow for web applications 
-to authenticate users via third-party providers like GitHub, Google, or Discord.
 
 ## Overview
 
@@ -24,69 +21,40 @@ grant process, including state management, code exchange, and user info retrieva
 7. Session is created and user is logged in
 
 <Callout type="info" title="Automatic Routes">
-  When you call `.authkestra_routes()`, Authkestra automatically registers 
-  routes for each provider: `/auth/{provider}` (login) and 
-  `/auth/{provider}/callback` (callback).
+  When you call `.authkestra_routes()`, Authkestra automatically registers
+  routes for each provider: `/auth/{provider}` (login),
+  `/auth/{provider}/callback` (callback) and `/auth/logout` (logout).
+
+  You can pass `scope` and `success_url` as query parameters to the login route to override defaults:
+  `/auth/github?scope=read:user&success_url=/dashboard`
 </Callout>
 
 ## Implementation
 
-Here's a complete example with GitHub OAuth:
+Integrating OAuth2 involves configuring a provider and adding the `OAuth2Flow` to your Authkestra instance.
 
-```rust title="main.rs"
-use authkestra_axum::{AuthSession, Authkestra, AuthkestraAxumExt, AuthkestraState, SessionConfig};
-use authkestra_flow::OAuth2Flow;
-use authkestra_providers_github::GithubProvider;
-use authkestra_session::SessionStore;
-use axum::{response::IntoResponse, routing::get, Router};
-use std::sync::Arc;
-use tower_cookies::CookieManagerLayer;
+```rust
+// 1. Configure the Provider
+let github = GithubProvider::new(client_id, client_secret, redirect_uri);
 
-#[tokio::main]
-async fn main() {
-    dotenvy::dotenv().ok();
+// 2. Build Authkestra with OAuth2 flow
+let authkestra = Authkestra::builder()
+    .provider(OAuth2Flow::new(github))
+    .session_store(session_store)
+    .build();
 
-    // Configure the GitHub provider
-    let client_id = std::env::var("AUTHKESTRA_GITHUB_CLIENT_ID").expect("GITHUB_CLIENT_ID required");
-    let client_secret = std::env::var("AUTHKESTRA_GITHUB_CLIENT_SECRET").expect("GITHUB_CLIENT_SECRET required");
-    let redirect_uri = std::env::var("AUTHKESTRA_GITHUB_REDIRECT_URI")
-        .unwrap_or_else(|_| "http://localhost:3000/auth/github/callback".to_string());
-
-    let github = GithubProvider::new(client_id, client_secret, redirect_uri);
-
-    // Session Store
-    let session_store: Arc<dyn SessionStore> = Arc::new(authkestra_session::MemoryStore::default());
-
-    // Build Authkestra with OAuth2 flow
-    let authkestra = Authkestra::builder()
-        .provider(OAuth2Flow::new(github))
-        .session_store(session_store)
-        .session_config(SessionConfig {
-            secure: false, // Set to true in production with HTTPS
-            ..Default::default()
-        })
-        .build();
-
-    let state = AuthkestraState {
-        authkestra: authkestra.clone(),
-    };
-
-    let app = Router::new()
-        .route("/", get(|| async { "Home" }))
-        .route("/protected", get(protected))
-        // This adds /auth/github and /auth/github/callback
-        .merge(authkestra.axum_router())
-        .layer(CookieManagerLayer::new())
-        .with_state(state);
-
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
-    axum::serve(listener, app).await.unwrap();
-}
-
-async fn protected(session: AuthSession) -> impl IntoResponse {
-    format!("Hello, {}!", session.0.identity.username.unwrap_or_default())
-}
+// 3. Register Routes (Axum example)
+let app = Router::new()
+    .merge(authkestra.axum_router())
+    .with_state(state);
 ```
+
+## Full Examples
+
+For complete working implementations including server setup and configuration, see the following examples:
+
+- [Axum OAuth2 Example](https://github.com/marcjazz/authkestra/blob/main/authkestra-examples/src/bin/axum_oauth.rs)
+- [Actix-web GitHub Example](https://github.com/marcjazz/authkestra/blob/main/authkestra-examples/src/bin/actix_github.rs)
 
 ## PKCE Enhancement
 
@@ -96,13 +64,12 @@ flow, preventing authorization code interception attacks.
 ```rust
 use authkestra_flow::OAuth2Flow;
 
-// PKCE is enabled by default for providers that support it
-let flow = OAuth2Flow::new(provider)
-    .with_pkce(true); // Explicitly enable PKCE
-
+// PKCE is enabled by default
 // For public clients (SPAs), PKCE is essential
+let flow = OAuth2Flow::new(provider);
+
 let spa_flow = OAuth2Flow::new(provider)
-    .with_pkce(true)
+    .with_pkce(false) // Disable it if you know what you are doing
     .with_scopes(vec!["read:user", "user:email"]);
 ```
 

@@ -40,7 +40,7 @@ For most users, **no extra configuration is needed**. If you are using the stand
 
 ## Advanced Usage
 
-If you are building custom integration logic and need to work with PKCE parameters manually, you can use the [`authkestra_core::pkce`](../authkestra-core/src/pkce.rs) module.
+If you are building custom integration logic and need to work with PKCE parameters manually, you can use the [`Pkce`](/docs/core/traits) struct from `authkestra_core`.
 
 ```rust
 use authkestra_core::pkce::Pkce;
@@ -48,8 +48,14 @@ use authkestra_core::pkce::Pkce;
 // Generate a new PKCE pair
 let pkce = Pkce::new();
 
-println!("Verifier: {}", pkce.code_verifier);
-println!("Challenge: {}", pkce.code_challenge);
+// Use these in your custom flow
+let verifier = &pkce.code_verifier;
+let challenge = &pkce.code_challenge;
 ```
 
-This allows you to generate high-entropy verifiers and their corresponding SHA-256 challenges according to the RFC 7636 specification.
+## Full Examples
+
+Since PKCE is an enhancement of the OAuth2 flow, see the OAuth2 examples for practical integration:
+
+- [Axum OAuth2 (PKCE enabled by default)](https://github.com/marcjazz/authkestra/blob/main/authkestra-examples/src/bin/axum_oauth.rs)
+- [Actix-web GitHub Example](https://github.com/marcjazz/authkestra/blob/main/authkestra-examples/src/bin/actix_github.rs)
