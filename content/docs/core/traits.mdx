@@ -1,33 +1,49 @@
 ---
 title: Core Traits
-description: Authkestra uses traits to define extension points. Implement these traits to customize authentication behavior.
+description: Authkestra uses traits to define extension points. Implement these traits to customize authentication behavior or add new providers.
 ---
-
-Authkestra uses traits to define extension points. Implement these traits to 
-customize authentication behavior or add new providers.
 
 ## OAuthProvider Trait
 
 The `OAuthProvider` trait defines the interface for OAuth2/OIDC 
 providers. Implement this to add support for new identity providers.
 
-```rust title="authkestra-core/src/traits.rs"
-use async_trait::async_trait;
-use authkestra_core::{AuthError, Identity, OAuthProvider, TokenResponse};
+```rust title="authkestra-core/src/lib.rs"
 
+/// Trait for an OAuth2-compatible provider.
 #[async_trait]
 pub trait OAuthProvider: Send + Sync {
-    /// Returns the unique identifier for this provider (e.g., "github", "google")
+    /// Get the provider identifier.
     fn provider_id(&self) -> &str;
-    
-    /// Returns the URL to redirect users for authorization
-    fn authorization_url(&self, state: &str) -> String;
-    
-    /// Exchanges an authorization code for tokens
-    async fn exchange_code(&self, code: &str) -> Result<TokenResponse, AuthError>;
-    
-    /// Fetches user information using the access token
-    async fn get_user_info(&self, access_token: &str) -> Result<Identity, AuthError>;
+
+    /// Helper to get the authorization URL.
+    fn get_authorization_url(
+        &self,
+        state: &str,
+        scopes: &[&str],
+        code_challenge: Option<&str>,
+    ) -> String;
+
+    /// Exchange an authorization code for an Identity.
+    async fn exchange_code_for_identity(
+        &self,
+        code: &str,
+        code_verifier: Option<&str>,
+    ) -> Result<(Identity, OAuthToken), AuthError>;
+
+    /// Refresh an access token using a refresh token.
+    async fn refresh_token(&self, _refresh_token: &str) -> Result<OAuthToken, AuthError> {
+        Err(AuthError::Provider(
+            "Token refresh not supported by this provider".into(),
+        ))
+    }
+
+    /// Revoke an access token.
+    async fn revoke_token(&self, _token: &str) -> Result<(), AuthError> {
+        Err(AuthError::Provider(
+            "Token revocation not supported by this provider".into(),
+        ))
+    }
 }
 ```
 
@@ -116,7 +132,7 @@ impl UserMapper for DatabaseUserMapper {
             r#"
             INSERT INTO users (external_id, provider, username, email)
             VALUES ($1, $2, $3, $4)
-            ON CONFLICT (external_id, provider) 
+            ON CONFLICT (external_id, provider)
             DO UPDATE SET last_login = NOW()
             RETURNING id, username, role, created_at
             "#,
@@ -134,32 +150,32 @@ impl UserMapper for DatabaseUserMapper {
 }
 ```
 
-## SessionStore Trait
+## ErasedOAuthFlow Trait
 
-The `SessionStore` trait handles session persistence. Authkestra 
-provides implementations for memory, Redis, and SQL databases.
+The `ErasedOAuthFlow` trait provides a type-erased interface for orchestrating the OAuth2 Authorization Code flow. This is particularly useful when you need to handle multiple different OAuth providers dynamically at runtime.
 
-```rust title="authkestra-core/src/traits.rs"
-use async_trait::async_trait;
-use authkestra_core::{AuthError, Session, SessionStore};
-
+```rust title="authkestra-core/src/lib.rs"
 #[async_trait]
-pub trait SessionStore: Send + Sync {
-    /// Create a new session
-    async fn create(&self, session: &Session) -> Result<(), AuthError>;
+pub trait ErasedOAuthFlow: Send + Sync {
+    /// Get the provider identifier.
+    fn provider_id(&self) -> String;
     
-    /// Retrieve a session by ID
-    async fn get(&self, session_id: &str) -> Result<Option<Session>, AuthError>;
+    /// Generates the redirect URL and CSRF state.
+    fn initiate_login(
+        &self,
+        scopes: &[&str],
+        pkce_challenge: Option<&str>
+    ) -> (String, String);
     
-    /// Delete a session
-    async fn delete(&self, session_id: &str) -> Result<(), AuthError>;
-    
-    /// Update session expiry
-    async fn touch(&self, session_id: &str) -> Result<(), AuthError>;
+    /// Completes the flow by exchanging the code.
+    async fn finalize_login(
+        &self,
+        code: &str,
+        received_state: &str,
+        expected_state: &str,
+        pkce_verifier: Option<&str>,
+    ) -> Result<(Identity, OAuthToken), AuthError>;
 }
 ```
 
-<Callout type="tip" title="Custom Session Stores">
-  You can implement custom session stores for databases like MongoDB, DynamoDB, or 
-  any other storage backend by implementing this trait.
-</Callout>
+`ErasedOAuthFlow` is implemented for `Arc<T>` and `Box<T>` where `T: ErasedOAuthFlow`, allowing for easy dynamic dispatch.

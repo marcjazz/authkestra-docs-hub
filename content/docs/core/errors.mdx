@@ -11,34 +11,33 @@ errors, providing type-safe error handling throughout your application.
 ```rust title="authkestra-core/src/error.rs"
 use thiserror::Error;
 
-#[derive(Debug, Error)]
+/// Errors that can occur during the authentication process.
+#[derive(Debug, thiserror::Error)]
 pub enum AuthError {
+    /// An error returned by the authentication provider
+    #[error("Provider error: {0}")]
+    Provider(String),
+    /// The provided credentials (email/password) are invalid
     #[error("Invalid credentials")]
     InvalidCredentials,
-    
-    #[error("Session not found")]
-    SessionNotFound,
-    
-    #[error("Session expired")]
-    SessionExpired,
-    
-    #[error("Token expired")]
-    TokenExpired,
-    
-    #[error("Invalid token: {0}")]
-    InvalidToken(String),
-    
-    #[error("Provider error: {0}")]
-    ProviderError(String),
-    
-    #[error("OAuth error: {0}")]
-    OAuthError(String),
-    
-    #[error("Configuration error: {0}")]
-    ConfigurationError(String),
-    
-    #[error("Internal error: {0}")]
-    Internal(String),
+    /// The authorization code is invalid or expired
+    #[error("Invalid code")]
+    InvalidCode,
+    /// A network error occurred during communication with the provider
+    #[error("Network error")]
+    Network,
+    /// An error occurred during session management
+    #[error("Session error: {0}")]
+    Session(String),
+    /// An error occurred during token processing
+    #[error("Token error: {0}")]
+    Token(String),
+    /// The CSRF state parameter does not match the expected value
+    #[error("CSRF state mismatch")]
+    CsrfMismatch,
+    /// An error occurred during OIDC discovery
+    #[error("Discovery error: {0}")]
+    Discovery(String),
 }
 ```
 
@@ -46,15 +45,14 @@ pub enum AuthError {
 
 | Variant | When It Occurs | HTTP Status |
 | ------- | -------------- | ----------- |
-| `InvalidCredentials` | Username/password authentication fails | 401 Unauthorized |
-| `SessionNotFound` | Session cookie references non-existent session | 401 Unauthorized |
-| `SessionExpired` | Session exists but has expired | 401 Unauthorized |
-| `TokenExpired` | JWT has passed its expiration time | 401 Unauthorized |
-| `InvalidToken` | JWT signature invalid or malformed | 401 Unauthorized |
-| `ProviderError` | OAuth provider returned an error | 502 Bad Gateway |
-| `OAuthError` | Error during OAuth flow (state mismatch, etc.) | 400 Bad Request |
-| `ConfigurationError` | Missing or invalid configuration | 500 Internal Server Error |
-| `Internal` | Database or other internal errors | 500 Internal Server Error |
+| `Provider` | An error returned by the authentication provider | 502 Bad Gateway |
+| `InvalidCredentials` | The provided credentials (email/password) are invalid | 401 Unauthorized |
+| `InvalidCode` | The authorization code is invalid or expired | 400 Bad Request |
+| `Network` | A network error occurred during communication with the provider | 503 Service Unavailable |
+| `Session` | An error occurred during session management | 401 Unauthorized |
+| `Token` | An error occurred during token processing | 401 Unauthorized |
+| `CsrfMismatch` | The CSRF state parameter does not match the expected value | 400 Bad Request |
+| `Discovery` | An error occurred during OIDC discovery | 502 Bad Gateway |
 
 ## Handling Errors
 
@@ -72,10 +70,10 @@ async fn login(creds: LoginCredentials) -> Result<Response, AppError> {
             Ok(Response::unauthorized("Invalid username or password"))
         }
         
-        Err(AuthError::Internal(msg)) => {
-            // Log internal error
-            tracing::error!("Auth internal error: {}", msg);
-            Err(AppError::InternalError)
+        Err(AuthError::Provider(msg)) => {
+            // Log provider error
+            tracing::error!("Auth provider error: {}", msg);
+            Err(AppError::ProviderError)
         }
         
         Err(e) => {
@@ -105,20 +103,20 @@ impl IntoResponse for AuthError {
             AuthError::InvalidCredentials => {
                 (StatusCode::UNAUTHORIZED, "Invalid credentials")
             }
-            AuthError::SessionNotFound | AuthError::SessionExpired => {
+            AuthError::Session(_) => {
                 (StatusCode::UNAUTHORIZED, "Session invalid or expired")
             }
-            AuthError::TokenExpired | AuthError::InvalidToken(_) => {
+            AuthError::Token(_) => {
                 (StatusCode::UNAUTHORIZED, "Token invalid or expired")
             }
-            AuthError::OAuthError(_) => {
-                (StatusCode::BAD_REQUEST, "OAuth authentication failed")
+            AuthError::CsrfMismatch | AuthError::InvalidCode => {
+                (StatusCode::BAD_REQUEST, "Authentication failed")
             }
-            AuthError::ProviderError(_) => {
-                (StatusCode::BAD_GATEWAY, "Provider unavailable")
+            AuthError::Provider(_) | AuthError::Discovery(_) => {
+                (StatusCode::BAD_GATEWAY, "Provider error")
             }
-            _ => {
-                (StatusCode::INTERNAL_SERVER_ERROR, "Internal error")
+            AuthError::Network => {
+                (StatusCode::SERVICE_UNAVAILABLE, "Network error")
             }
         };
 
