@@ -1,89 +1,99 @@
-import Link from 'next/link';
-import { 
-  ArrowRight, 
-  Box, 
-  Github, 
-  Key, 
-  Layers, 
-  Shield, 
+import Link from 'next/link'
+import { CodeBlock } from '@/components/docs/CodeBlock'
+import {
+  ArrowRight,
+  Box,
+  Github,
+  Key,
+  Layers,
+  Shield,
   Workflow,
   Zap,
   Lock,
-  Server
-} from "lucide-react";
+  Server,
+} from 'lucide-react'
 
 const features = [
   {
     icon: Box,
-    title: "Modular Design",
-    description: "Strictly separated concerns with composable crates for core, flow, session, token, and framework adapters.",
+    title: 'Modular Design',
+    description:
+      'Strictly separated concerns with composable crates for core, flow, session, token, and framework adapters.',
   },
   {
     icon: Workflow,
-    title: "Explicit Control Flow",
-    description: "No magic middleware. Dependencies and context are injected explicitly via Extractors or constructors.",
+    title: 'Explicit Control Flow',
+    description:
+      'No magic middleware. Dependencies and context are injected explicitly via Extractors or constructors.',
   },
   {
     icon: Layers,
-    title: "Provider Agnostic",
-    description: "Easily integrate new OAuth providers by implementing the OAuthProvider trait. GitHub, Google, and Discord included.",
+    title: 'Provider Agnostic',
+    description:
+      'Easily integrate new OAuth providers by implementing the OAuthProvider trait. GitHub, Google, and Discord included.',
   },
   {
     icon: Shield,
-    title: "OpenID Connect",
-    description: "Full OIDC support with automatic discovery, JWKS validation, and PKCE for enhanced security.",
+    title: 'OpenID Connect',
+    description:
+      'Full OIDC support with automatic discovery, JWKS validation, and PKCE for enhanced security.',
   },
   {
     icon: Key,
-    title: "Session Management",
-    description: "Flexible session storage via the SessionStore trait with in-memory, Redis, and SQL support.",
+    title: 'Session Management',
+    description:
+      'Flexible session storage via the SessionStore trait with in-memory, Redis, and SQL support.',
   },
   {
     icon: Lock,
-    title: "Stateless Tokens",
-    description: "Comprehensive JWT signing, verification, and offline validation for scalable stateless authentication.",
+    title: 'Stateless Tokens',
+    description:
+      'Comprehensive JWT signing, verification, and offline validation for scalable stateless authentication.',
   },
-];
+]
 
 export default function LandingPage() {
   return (
-    <main className="flex flex-col min-h-screen">
+    <main className='flex flex-col min-h-screen'>
       {/* Hero Section */}
-      <section className="relative pt-32 pb-20 overflow-hidden border-b">
-        <div className="container mx-auto px-6 relative z-10">
-          <div className="max-w-4xl mx-auto text-center">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 mb-6 rounded-full border border-fd-primary/30 bg-fd-primary/5">
-              <Zap className="w-4 h-4 text-fd-primary" />
-              <span className="text-sm font-medium">v0.1.0 Released</span>
+      <section className='relative pt-32 pb-20 overflow-hidden border-b'>
+        <div className='container mx-auto px-6 relative z-10'>
+          <div className='max-w-4xl mx-auto text-center'>
+            <div className='inline-flex items-center gap-2 px-4 py-1.5 mb-6 rounded-full border border-fd-primary/30 bg-fd-primary/5'>
+              <Zap className='w-4 h-4 text-fd-primary' />
+              <span className='text-sm font-medium'>v0.1.1 Released</span>
             </div>
 
-            <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-6">
-              Authentication for
-              <span className="block text-fd-primary">Rust Applications</span>
+            <h1 className='text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-6'>
+              Authentication Orchestrator for Rust
             </h1>
 
-            <p className="text-xl text-fd-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed">
-              A modular, framework-agnostic authentication orchestration system 
-              emphasizing <strong className="text-fd-foreground">explicit control flow</strong>, 
-              <strong className="text-fd-foreground"> strong typing</strong>, and 
-              <strong className="text-fd-foreground"> composability</strong>.
+            <p className='text-xl text-fd-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed'>
+              A modular, framework-agnostic authentication orchestration system
+              emphasizing{' '}
+              <strong className='text-fd-foreground'>
+                explicit control flow
+              </strong>
+              ,<strong className='text-fd-foreground'> strong typing</strong>,
+              and
+              <strong className='text-fd-foreground'> composability</strong>.
             </p>
 
-            <div className="flex flex-wrap items-center justify-center gap-4">
-              <Link 
-                href="/docs" 
-                className="inline-flex items-center justify-center rounded-md bg-fd-primary px-6 py-3 text-sm font-medium text-fd-primary-foreground shadow transition-colors hover:bg-fd-primary/90"
+            <div className='flex flex-wrap items-center justify-center gap-4'>
+              <Link
+                href='/docs'
+                className='inline-flex items-center justify-center rounded-md bg-fd-primary px-6 py-3 text-sm font-medium text-fd-primary-foreground shadow transition-colors hover:bg-fd-primary/90'
               >
                 Get Started
-                <ArrowRight className="w-4 h-4 ml-2" />
+                <ArrowRight className='w-4 h-4 ml-2' />
               </Link>
               <a
-                href="https://github.com/marcjazz/authkestra"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center justify-center rounded-md border border-fd-border bg-fd-background px-6 py-3 text-sm font-medium shadow-sm transition-colors hover:bg-fd-accent hover:text-fd-accent-foreground"
+                href='https://github.com/marcjazz/authkestra'
+                target='_blank'
+                rel='noopener noreferrer'
+                className='inline-flex items-center justify-center rounded-md border border-fd-border bg-fd-background px-6 py-3 text-sm font-medium shadow-sm transition-colors hover:bg-fd-accent hover:text-fd-accent-foreground'
               >
-                <Github className="w-4 h-4 mr-2" />
+                <Github className='w-4 h-4 mr-2' />
                 View on GitHub
               </a>
             </div>
@@ -92,28 +102,29 @@ export default function LandingPage() {
       </section>
 
       {/* Features Grid */}
-      <section className="py-24 bg-fd-muted/50">
-        <div className="container mx-auto px-6">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-bold mb-4">
-              Built for <span className="text-fd-primary">Rust Developers</span>
+      <section className='py-24 bg-fd-muted/50'>
+        <div className='container mx-auto px-6'>
+          <div className='text-center mb-16'>
+            <h2 className='text-3xl md:text-4xl font-bold mb-4'>
+              Built for <span className='text-fd-primary'>Rust Developers</span>
             </h2>
-            <p className="text-lg text-fd-muted-foreground max-w-2xl mx-auto">
-              Designed with Rust's philosophy in mind: explicit, composable, and type-safe.
+            <p className='text-lg text-fd-muted-foreground max-w-2xl mx-auto'>
+              Designed with Rust's philosophy in mind: explicit, composable, and
+              type-safe.
             </p>
           </div>
 
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className='grid md:grid-cols-2 lg:grid-cols-3 gap-8'>
             {features.map((feature) => (
               <div
                 key={feature.title}
-                className="p-8 bg-fd-background rounded-xl border border-fd-border shadow-sm hover:border-fd-primary/30 transition-colors"
+                className='p-8 bg-fd-background rounded-xl border border-fd-border shadow-sm hover:border-fd-primary/30 transition-colors'
               >
-                <div className="w-12 h-12 rounded-lg bg-fd-primary/10 flex items-center justify-center mb-6">
-                  <feature.icon className="w-6 h-6 text-fd-primary" />
+                <div className='w-12 h-12 rounded-lg bg-fd-primary/10 flex items-center justify-center mb-6'>
+                  <feature.icon className='w-6 h-6 text-fd-primary' />
                 </div>
-                <h3 className="text-xl font-semibold mb-3">{feature.title}</h3>
-                <p className="text-fd-muted-foreground leading-relaxed">
+                <h3 className='text-xl font-semibold mb-3'>{feature.title}</h3>
+                <p className='text-fd-muted-foreground leading-relaxed'>
                   {feature.description}
                 </p>
               </div>
@@ -123,52 +134,46 @@ export default function LandingPage() {
       </section>
 
       {/* Quick Start Preview */}
-      <section className="py-24 border-t">
-        <div className="container mx-auto px-6">
-          <div className="grid lg:grid-cols-2 gap-16 items-center">
+      <section className='py-24 border-t'>
+        <div className='container mx-auto px-6'>
+          <div className='grid lg:grid-cols-2 gap-16 items-center'>
             <div>
-              <h2 className="text-3xl md:text-4xl font-bold mb-6">
+              <h2 className='text-3xl md:text-4xl font-bold mb-6'>
                 Get started in minutes
               </h2>
-              <p className="text-lg text-fd-muted-foreground mb-8 leading-relaxed">
-                Authkestra integrates seamlessly with Axum and Actix-web. Set up GitHub OAuth, 
-                session management, and protected routes with just a few lines of code.
+              <p className='text-lg text-fd-muted-foreground mb-8 leading-relaxed'>
+                Authkestra integrates seamlessly with Axum and Actix-web. Set up
+                GitHub OAuth, session management, and protected routes with just
+                a few lines of code.
               </p>
-              <ul className="space-y-4 mb-10">
+              <ul className='space-y-4 mb-10'>
                 {[
-                  "Type-safe extractors for session and token access",
-                  "Automatic route generation for OAuth callbacks",
-                  "Flexible session stores (Memory, Redis, SQL)",
-                  "Built-in support for popular providers",
+                  'Type-safe extractors for session and token access',
+                  'Automatic route generation for OAuth callbacks',
+                  'Flexible session stores (Memory, Redis, SQL)',
+                  'Built-in support for popular providers',
                 ].map((item, idx) => (
-                  <li key={idx} className="flex items-start gap-3">
-                    <div className="w-6 h-6 rounded-full bg-fd-primary/20 flex items-center justify-center mt-0.5">
-                      <Zap className="w-3 h-3 text-fd-primary" />
+                  <li key={idx} className='flex items-start gap-3'>
+                    <div className='w-6 h-6 rounded-full bg-fd-primary/20 flex items-center justify-center mt-0.5'>
+                      <Zap className='w-3 h-3 text-fd-primary' />
                     </div>
-                    <span className="text-fd-muted-foreground">{item}</span>
+                    <span className='text-fd-muted-foreground'>{item}</span>
                   </li>
                 ))}
               </ul>
-              <Link 
-                href="/docs/quickstart" 
-                className="inline-flex items-center justify-center rounded-md bg-fd-primary px-6 py-3 text-sm font-medium text-fd-primary-foreground shadow transition-colors hover:bg-fd-primary/90"
+              <Link
+                href='/docs/quickstart'
+                className='inline-flex items-center justify-center rounded-md bg-fd-primary px-6 py-3 text-sm font-medium text-fd-primary-foreground shadow transition-colors hover:bg-fd-primary/90'
               >
                 View Quick Start Guide
-                <ArrowRight className="w-4 h-4 ml-2" />
+                <ArrowRight className='w-4 h-4 ml-2' />
               </Link>
             </div>
 
-            <div className="bg-fd-card rounded-xl border border-fd-border p-6 shadow-lg">
-              <div className="flex items-center gap-2 mb-4 border-b border-fd-border pb-4">
-                <div className="flex gap-1.5">
-                  <div className="w-3 h-3 rounded-full bg-red-500/50" />
-                  <div className="w-3 h-3 rounded-full bg-yellow-500/50" />
-                  <div className="w-3 h-3 rounded-full bg-green-500/50" />
-                </div>
-                <span className="text-xs font-mono text-fd-muted-foreground ml-2">main.rs</span>
-              </div>
-              <pre className="text-sm font-mono overflow-x-auto text-fd-foreground">
-                <code>{`use authkestra_axum::{Authkestra, AuthkestraAxumExt, AuthSession};
+            <CodeBlock
+              filename="main.rs"
+              language="rust"
+              code={`use authkestra_axum::{Authkestra, AuthkestraAxumExt, AuthSession};
 use authkestra_flow::OAuth2Flow;
 use authkestra_providers_github::GithubProvider;
 
@@ -177,7 +182,7 @@ async fn main() {
     let provider = GithubProvider::new(
         env::var("GITHUB_ID")?,
         env::var("GITHUB_SECRET")?,
-        "http://localhost:3000/callback".into(),
+        "http://localhost:3000/auth/github/callback".into(),
     );
 
     let authkestra = Authkestra::builder()
@@ -193,49 +198,48 @@ async fn main() {
 
 async fn me(session: AuthSession) -> String {
     format!("Hello, {}!", session.identity.username)
-}`}</code>
-              </pre>
-            </div>
+}`}
+            />
           </div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="py-12 border-t mt-auto">
-        <div className="container mx-auto px-6">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-8">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-fd-primary flex items-center justify-center">
-                <span className="text-fd-primary-foreground font-bold">A</span>
+      <footer className='py-12 border-t mt-auto'>
+        <div className='container mx-auto px-6'>
+          <div className='flex flex-col md:flex-row items-center justify-between gap-8'>
+            <div className='flex items-center gap-3'>
+              <div className='w-8 h-8 rounded-lg bg-fd-primary flex items-center justify-center'>
+                <span className='text-fd-primary-foreground font-bold'>A</span>
               </div>
-              <span className="font-semibold text-xl">Authkestra</span>
+              <span className='font-semibold text-xl'>Authkestra</span>
             </div>
 
-            <p className="text-sm text-fd-muted-foreground">
+            <p className='text-sm text-fd-muted-foreground'>
               Dual-licensed under MIT and Apache 2.0
             </p>
 
-            <div className="flex items-center gap-6">
+            <div className='flex items-center gap-6'>
               <a
-                href="https://github.com/marcjazz/authkestra"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-fd-muted-foreground hover:text-fd-foreground transition-colors"
+                href='https://github.com/marcjazz/authkestra'
+                target='_blank'
+                rel='noopener noreferrer'
+                className='text-fd-muted-foreground hover:text-fd-foreground transition-colors'
               >
-                <Github className="w-6 h-6" />
+                <Github className='w-6 h-6' />
               </a>
               <a
-                href="https://crates.io/crates/authkestra"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-fd-muted-foreground hover:text-fd-foreground transition-colors"
+                href='https://crates.io/crates/authkestra'
+                target='_blank'
+                rel='noopener noreferrer'
+                className='text-fd-muted-foreground hover:text-fd-foreground transition-colors'
               >
-                <Server className="w-6 h-6" />
+                <Server className='w-6 h-6' />
               </a>
             </div>
           </div>
         </div>
       </footer>
     </main>
-  );
+  )
 }
