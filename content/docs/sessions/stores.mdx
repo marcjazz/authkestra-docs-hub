@@ -21,21 +21,29 @@ provides implementations for memory, Redis, and SQL databases.
 
 ```rust title="authkestra-session/src/lib.rs"
 use async_trait::async_trait;
-use authkestra_core::{AuthError, Session, SessionStore};
+use authkestra_core::SameSite;
+pub use authkestra_core::{error::AuthError, state::Identity};
 
+/// Represents an active user session.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct Session {
+    /// Unique session identifier.
+    pub id: String,
+    /// The identity associated with this session.
+    pub identity: Identity,
+    /// When the session expires.
+    pub expires_at: chrono::DateTime<chrono::Utc>,
+}
+
+/// Trait for implementing session persistence.
 #[async_trait]
-pub trait SessionStore: Send + Sync {
-    /// Create a new session
-    async fn create(&self, session: &Session) -> Result<(), AuthError>;
-    
-    /// Retrieve a session by ID
-    async fn get(&self, session_id: &str) -> Result<Option<Session>, AuthError>;
-    
-    /// Delete a session
-    async fn delete(&self, session_id: &str) -> Result<(), AuthError>;
-    
-    /// Update session expiry
-    async fn touch(&self, session_id: &str) -> Result<(), AuthError>;
+pub trait SessionStore: Send + Sync + 'static {
+    /// Load a session by its ID.
+    async fn load_session(&self, id: &str) -> Result<Option<Session>, AuthError>;
+    /// Save or update a session.
+    async fn save_session(&self, session: &Session) -> Result<(), AuthError>;
+    /// Delete a session by its ID.
+    async fn delete_session(&self, id: &str) -> Result<(), AuthError>;
 }
 ```
 
@@ -87,7 +95,8 @@ Add the Redis feature to your dependencies:
 
 ```toml title="Cargo.toml"
 [dependencies]
-authkestra = { version = "0.1.0", features = ["axum", "github", "session-redis"] }
+authkestra = { version = "0.1.1", features = ["axum", "github"]}
+authkestra-session = { version = "0.1.1", features = ["redis"] }
 ```
 
 <Callout type="tip" title="Redis Configuration">
@@ -128,58 +137,19 @@ let authkestra = Authkestra::builder()
 
 ```toml title="Cargo.toml"
 [dependencies]
-authkestra = { version = "0.1.0", features = ["axum", "github", "session-sql"] }
-sqlx = { version = "0.7", features = ["runtime-tokio-rustls", "sqlite"] }
+authkestra = { version = "0.1.1", features = ["axum", "github"] }
+authkestra-session = { version = "0.1.1", features = ["sqlite"] }
+sqlx = { version = "0.8", features = ["runtime-tokio-rustls", "sqlite"] }
 ```
 
 ## Custom Store
 
-Implement the `SessionStore` trait for custom backends:
+You can implement the `SessionStore` trait for custom backends like MongoDB, DynamoDB, or any other storage system.
 
-```rust title="custom_store.rs"
-use async_trait::async_trait;
-use authkestra_core::{AuthError, Session, SessionStore};
+The best way to learn how to implement a custom store is to look at the source code of the existing implementations in the `authkestra-session` crate for guidance:
 
-pub struct MongoStore {
-    collection: mongodb::Collection<Session>,
-}
+- [`MemoryStore`](https://github.com/marcjazz/authkestra/blob/main/authkestra-session/src/memory.rs): A simple in-memory implementation.
+- [`RedisStore`](https://github.com/marcjazz/authkestra/blob/main/authkestra-session/src/redis.rs): An implementation using Redis with automatic expiration.
+- [`SqlStore`](https://github.com/marcjazz/authkestra/blob/main/authkestra-session/src/sql.rs): A persistent implementation for SQL databases using `sqlx`.
 
-#[async_trait]
-impl SessionStore for MongoStore {
-    async fn create(&self, session: &Session) -> Result<(), AuthError> {
-        self.collection
-            .insert_one(session, None)
-            .await
-            .map_err(|e| AuthError::Internal(e.to_string()))?;
-        Ok(())
-    }
-
-    async fn get(&self, session_id: &str) -> Result<Option<Session>, AuthError> {
-        let filter = doc! { "id": session_id };
-        self.collection
-            .find_one(filter, None)
-            .await
-            .map_err(|e| AuthError::Internal(e.to_string()))
-    }
-
-    async fn delete(&self, session_id: &str) -> Result<(), AuthError> {
-        let filter = doc! { "id": session_id };
-        self.collection
-            .delete_one(filter, None)
-            .await
-            .map_err(|e| AuthError::Internal(e.to_string()))?;
-        Ok(())
-    }
-
-    async fn touch(&self, session_id: &str) -> Result<(), AuthError> {
-        // Update expiry timestamp
-        let filter = doc! { "id": session_id };
-        let update = doc! { "$set": { "expires_at": new_expiry } };
-        self.collection
-            .update_one(filter, update, None)
-            .await
-            .map_err(|e| AuthError::Internal(e.to_string()))?;
-        Ok(())
-    }
-}
-```
+These implementations provide excellent references for handling session serialization, database connectivity, and error mapping while adhering to the `SessionStore` trait.
