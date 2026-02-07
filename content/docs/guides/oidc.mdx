@@ -43,25 +43,29 @@ You can use the `OidcProvider::discover` method to perform this automatic config
 Here is a complete example of how to configure the `OidcProvider` and add it to your `Authkestra` instance using the Axum framework.
 
 ```rust
-use authkestra_axum::{Authkestra, AuthkestraAxumExt};
-use authkestra_flow::OAuth2Flow;
+use authkestra_axum::AuthkestraAxumExt;
+use authkestra_flow::{Authkestra, OAuth2Flow};
 use authkestra_oidc::OidcProvider;
 use std::sync::Arc;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 1. Define your OIDC settings
-    let issuer = "https://your-oidc-provider.com";
-    let client_id = "your-client-id".to_string();
-    let client_secret = "your-client-secret".to_string();
-    let redirect_uri = "http://localhost:3000/auth/oidc/callback".to_string();
+    let issuer = std::env::var("AUTHKESTRA_OIDC_ISSUER")
+        .expect("AUTHKESTRA_OIDC_ISSUER must be set");
+    let client_id = std::env::var("AUTHKESTRA_OIDC_CLIENT_ID")
+        .expect("AUTHKESTRA_OIDC_CLIENT_ID must be set");
+    let client_secret = std::env::var("AUTHKESTRA_OIDC_CLIENT_SECRET")
+        .expect("AUTHKESTRA_OIDC_CLIENT_SECRET must be set");
+    let redirect_uri = std::env::var("AUTHKESTRA_OIDC_REDIRECT_URI")
+        .unwrap_or_else(|_| "http://localhost:3000/auth/oidc/callback".to_string());
 
     // 2. Discover the provider metadata and initialize
     let provider = OidcProvider::discover(
         client_id,
         client_secret,
         redirect_uri,
-        issuer
+        &issuer
     ).await?;
 
     // 3. Build Authkestra with the OIDC provider

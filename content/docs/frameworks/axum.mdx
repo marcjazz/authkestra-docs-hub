@@ -89,17 +89,20 @@ Authkestra makes it easy to support multiple authentication providers (e.g., Git
 You can configure multiple providers by chaining `.provider()` calls on the `Authkestra` builder. Each provider is typically wrapped in an `OAuth2Flow`.
 
 ```rust
-use authkestra_axum::Authkestra;
-use authkestra_flow::OAuth2Flow;
+use authkestra_axum::AuthkestraAxumExt;
+use authkestra_flow::{Authkestra, OAuth2Flow};
 use authkestra_providers_github::GithubProvider;
-use authkestra_providers_google::GoogleProvider;
 
-let github = GithubProvider::new(gh_id, gh_secret, gh_redirect);
-let google = GoogleProvider::new(go_id, go_secret, go_redirect);
+// ... other imports ...
+
+let client_id = std::env::var("AUTHKESTRA_GITHUB_CLIENT_ID")?;
+let client_secret = std::env::var("AUTHKESTRA_GITHUB_CLIENT_SECRET")?;
+let redirect_uri = std::env::var("AUTHKESTRA_GITHUB_REDIRECT_URI")?;
+
+let github = GithubProvider::new(client_id, client_secret, redirect_uri);
 
 let authkestra = Authkestra::builder()
     .provider(OAuth2Flow::new(github))
-    .provider(OAuth2Flow::new(google))
     .session_store(my_session_store)
     .build();
 
@@ -148,4 +151,4 @@ For SPA use cases:
 
 With Authkestra's Axum integration, you can move from a single-provider setup to a multi-provider system by simply adding more providers to the builder. The rest of your application remains clean and focused on your business logic.
 
-For a complete working example featuring multiple providers and session management, see the [axum_oauth.rs](https://github.com/marcoruzzante/authkestra/blob/main/authkestra-examples/src/bin/axum_oauth.rs) file in the `authkestra-examples` directory on GitHub.
+For a complete working example featuring multiple providers and session management, see the [axum_oauth.rs](https://github.com/mscatena/authkestra/blob/main/authkestra-examples/src/bin/axum_oauth.rs) file in the `authkestra-examples` directory on GitHub.

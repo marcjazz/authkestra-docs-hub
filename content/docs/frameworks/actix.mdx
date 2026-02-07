@@ -96,20 +96,18 @@ async fn callback_handler(
 ) -> impl Responder {
     let flow = &data.authkestra.providers["github"];
 
-    let res = handle_oauth_callback_jwt_erased(
+    // ... other setup code ...
+
+    handle_oauth_callback_jwt_erased(
         flow,
         &req,
         params.into_inner(),
         data.authkestra.token_manager.clone(),
-        3600, // Token expiration in seconds
+        3600,
         &data.authkestra.session_config,
     )
-    .await;
-
-    match res {
-        Ok(token_resp) => token_resp, // Returns JSON with access_token
-        Err(err) => HttpResponse::from_error(err),
-    }
+    .await
+    .map_err(actix_web::error::ErrorInternalServerError)
 }
 ```
 
@@ -124,6 +122,8 @@ You need to register `Arc<JwksCache>` and `jsonwebtoken::Validation` in your `ap
 ```rust
 use authkestra_token::offline_validation::JwksCache;
 use jsonwebtoken::{Algorithm, Validation};
+
+// ... other setup code ...
 
 let jwks_uri = "https://www.googleapis.com/oauth2/v3/certs".to_string();
 let jwks_cache = Arc::new(JwksCache::new(jwks_uri, Duration::from_secs(3600)).await?);
@@ -157,4 +157,4 @@ async fn external_api(Jwt(claims): Jwt<MyClaims>) -> impl Responder {
 
 By breaking down the authentication logic into extractors and specialized handlers, Authkestra allows you to support both traditional sessions and modern JWT-based flows with ease.
 
-For a complete working implementation, including the frontend logic, check out the [actix_spa_jwt.rs](https://github.com/marcoruiz9/authkestra/blob/main/authkestra-examples/src/bin/actix_spa_jwt.rs) example in our GitHub repository.
+For a complete working implementation, including the frontend logic, check out the [actix_spa_jwt.rs](https://github.com/mscatena/authkestra/blob/main/authkestra-examples/src/bin/actix_spa_jwt.rs) example in our GitHub repository.
