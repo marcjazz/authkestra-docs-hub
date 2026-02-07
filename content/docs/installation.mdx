@@ -13,7 +13,7 @@ Add `authkestra` to your `Cargo.toml` with the features you need:
 ```toml title="Cargo.toml"
 [dependencies]
 # Use the facade with the features you need
-authkestra = { version = "0.1.0", features = ["axum", "github"] }
+authkestra = { version = "0.1.1", features = ["axum", "github"] }
 
 # Async runtime
 tokio = { version = "1", features = ["full"] }
@@ -37,23 +37,32 @@ dotenvy = "0.15"
 | `google` | Google OAuth provider |
 | `discord` | Discord OAuth provider |
 | `oidc` | OpenID Connect support with discovery and validation |
-| `session-redis` | Redis session store |
-| `session-sql` | SQL session store (Postgres, MySQL, SQLite) |
+| `session` | Session persistence layer |
+| `token` | JWT signing, verification, and offline validation |
 
 You can combine multiple features:
 
 ```toml title="Cargo.toml"
 [dependencies]
-authkestra = { version = "0.1.0", features = [
+authkestra = { version = "0.1.1", features = [
     "axum",
     "github",
     "google",
     "discord",
     "oidc",
-    "session-sql"
+    "session"
 ] }
 ```
 
+If you need to enable a specific feature inside one of the sub-crates (e.g., if authkestra-session has a redis feature), you must add the sub-crate directly to your Cargo.toml as well, solely to enable that feature. Cargo will merge the feature flags.
+
+```toml title="Cargo.toml"
+[dependencies]
+authkestra = { version = "0.1.1", features = ["session"] }
+# Add the sub-crate directly to enable the extra feature
+authkestra-session = { version = "0.1.1", features = ["redis"] }
+
+```
 ## Using Individual Crates
 
 For advanced users, individual crates can be used independently:
@@ -64,7 +73,7 @@ authkestra-core = "0.1"
 authkestra-flow = "0.1"
 authkestra-axum = "0.1"
 authkestra-providers-github = "0.1"
-authkestra-session = { version = "0.1", features = ["sql"] }
+authkestra-session = { version = "0.1", features = ["sqlx-store"] }
 ```
 
 <Callout type="tip" title="When to use individual crates">

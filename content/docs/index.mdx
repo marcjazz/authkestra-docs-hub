@@ -1,25 +1,21 @@
 ---
 title: Introduction
-description: Authkestra is a modular, framework-agnostic authentication orchestration system for Rust.
+description: Authkestra is a modular, framework-agnostic authentication orchestration system for Rust. designed to be idiomatic and emphasize explicit control flow, strong typing, and composability.
 ---
-
-Authkestra is a modular, framework-agnostic authentication orchestration 
-system for Rust, designed to be idiomatic and emphasize explicit control 
-flow, strong typing, and composability.
 
 ## What is Authkestra?
 
 Unlike authentication solutions common in other ecosystems that rely heavily on 
 dynamic middleware and implicit context, Authkestra follows Rust's philosophy 
-of being **explicit and type-safe**. Authentication context is never 
+of being **explicit, composable, and type-safe**. Authentication context is never 
 implicitly available—users must explicitly request it via extractors.
 
 ```rust title="example.rs"
 use authkestra_axum::{AuthSession, Authkestra};
 
 // Explicit injection via extractors - no magic!
-async fn protected(session: AuthSession) -> impl IntoResponse {
-    let user = session.0.identity;
+async fn protected(AuthSession(session): AuthSession) -> impl IntoResponse {
+    let user = session.identity;
     format!("Hello, {}!", user.username.unwrap_or_default())
 }
 ```
