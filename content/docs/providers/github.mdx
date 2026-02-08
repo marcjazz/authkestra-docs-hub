@@ -46,6 +46,7 @@ let provider = GithubProvider::new(
 // Add to Authkestra
 let authkestra = Authkestra::builder()
     .provider(OAuth2Flow::new(provider))
+    .session_store(Arc::new(authkestra_session::MemoryStore::default()))
     .build();
 ```
 

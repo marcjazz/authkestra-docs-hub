@@ -13,19 +13,18 @@ The Axum adapter simplifies the process of adding authentication to your web ser
 
 Authkestra integrates with Axum's state system via `AuthkestraState`. This struct holds the configuration and provider registry required for authentication.
 
-Depending on your application's needs, you can use `AuthkestraState` in two ways:
-
 ### Using AuthkestraState Directly
 
 If your application does not require any additional custom state, you can use `AuthkestraState` directly as your application state:
 
 ```rust
-use authkestra_axum::AuthkestraState;
+use authkestra_axum::{AuthkestraState, AuthkestraAxumExt};
+use authkestra_flow::Authkestra;
 use axum::Router;
 
 // ... configure authkestra ...
 
-let state = AuthkestraState { authkestra };
+let state = AuthkestraState::from(authkestra.clone());
 
 let app = Router::new()
     .merge(authkestra.axum_router())
@@ -37,21 +36,51 @@ let app = Router::new()
 If your application already manages its own state, you should include `Authkestra` as a field within your custom state struct and implement the `FromRef` trait. This allows Authkestra's extractors (like `AuthSession`) to access the authentication configuration.
 
 ```rust
-use authkestra_flow::Authkestra;
+use authkestra_flow::{Authkestra, SessionStoreState, TokenManagerState, Missing};
+use authkestra_axum::AuthkestraAxumError;
+use authkestra_session::{SessionStore, SessionConfig};
+use authkestra_token::TokenManager;
 use axum::extract::FromRef;
+use std::sync::Arc;
 
 #[derive(Clone)]
-struct AppState {
-    // Your other application state (e.g., database pool)
+struct AppState<S = Missing, T = Missing> {
     pub db_pool: MyDbPool,
-    /// Authkestra configuration
-    pub auth_state: Authkestra,
+    /// Authkestra instance
+    pub authkestra: Authkestra<S, T>,
 }
 
-// Implement FromRef to allow extractors to find AuthkestraState
-impl FromRef<AppState> for Authkestra {
-    fn from_ref(state: &AppState) -> Self {
-        state.auth_state.clone()
+// Implement FromRef for Authkestra
+impl<S: Clone, T: Clone> FromRef<AppState<S, T>> for Authkestra<S, T> {
+    fn from_ref(state: &AppState<S, T>) -> Self {
+        state.authkestra.clone()
+    }
+}
+
+// Implement FromRef for SessionStore (required for AuthSession)
+impl<S, T> FromRef<AppState<S, T>> for Result<Arc<dyn SessionStore>, AuthkestraAxumError>
+where
+    S: SessionStoreState,
+{
+    fn from_ref(state: &AppState<S, T>) -> Self {
+        Ok(state.authkestra.session_store.get_store())
+    }
+}
+
+// Implement FromRef for SessionConfig (required for AuthSession)
+impl<S, T> FromRef<AppState<S, T>> for SessionConfig {
+    fn from_ref(state: &AppState<S, T>) -> Self {
+        state.authkestra.session_config.clone()
+    }
+}
+
+// Implement FromRef for TokenManager (required for AuthToken)
+impl<S, T> FromRef<AppState<S, T>> for Result<Arc<TokenManager>, AuthkestraAxumError>
+where
+    T: TokenManagerState,
+{
+    fn from_ref(state: &AppState<S, T>) -> Self {
+        Ok(state.authkestra.token_manager.get_manager())
     }
 }
 ```
@@ -102,35 +131,33 @@ async fn external_api_handler(Jwt(claims): Jwt<MyClaims>) -> String {
 }
 ```
 
-## Multiple Providers
+## Configuration with Typestates
 
-Authkestra makes it easy to support multiple authentication providers (e.g., GitHub, Google, Discord) within a single application using a flexible builder pattern.
+Authkestra uses a typestate pattern to ensure that your application is correctly configured at compile time.
 
-### Using the Builder Pattern
-
-You can configure multiple providers by chaining `.provider()` calls on the `Authkestra` builder. Each provider is typically wrapped in an `OAuth2Flow`.
+### Session-based Application
 
 ```rust
-use authkestra_axum::AuthkestraAxumExt;
-use authkestra_flow::{Authkestra, OAuth2Flow};
-use authkestra_providers_github::GithubProvider;
+use authkestra_flow::Authkestra;
+use authkestra_session::MemoryStore;
+use std::sync::Arc;
 
-// ... other imports ...
-
-let client_id = std::env::var("AUTHKESTRA_GITHUB_CLIENT_ID")?;
-let client_secret = std::env::var("AUTHKESTRA_GITHUB_CLIENT_SECRET")?;
-let redirect_uri = std::env::var("AUTHKESTRA_GITHUB_REDIRECT_URI")?;
-
-let github = GithubProvider::new(client_id, client_secret, redirect_uri);
+let session_store = Arc::new(MemoryStore::default());
 
 let authkestra = Authkestra::builder()
-    .provider(OAuth2Flow::new(github))
-    .session_store(my_session_store)
+    .session_store(session_store)
     .build();
+```
 
-let state = AppState {
-    auth_state: AuthkestraState { authkestra },
-};
+### Token-based Application (Stateless)
+
+```rust
+use authkestra_flow::Authkestra;
+
+let authkestra = Authkestra::builder()
+    .jwt_secret(b"your-32-byte-long-secret-key-here!!")
+    .jwt_issuer("my-app")
+    .build();
 ```
 
 ## Router Integration
@@ -153,24 +180,52 @@ let app = Router::new()
 ```
 
 By default, this registers:
-- `GET /auth/:provider`: Initiates the login flow for a specific provider.
-- `GET /auth/:provider/callback`: Handles the OAuth2 callback.
+- `GET /auth/{provider}`: Initiates the login flow for a specific provider.
+- `GET /auth/{provider}/callback`: Handles the OAuth2 callback.
 - `GET /auth/logout`: Clears the user session.
 
 ## SPA Example: JWT Authentication
 
 In a Single Page Application (SPA), you typically want the backend to exchange the OAuth code for a JWT that the frontend can store and use for subsequent requests.
 
-### SPA Flow and Redirect URI
+### 1. Configure Authkestra
+To issue JWTs, you must provide a `TokenManager` (or use the `jwt_secret` helper) to the `Authkestra` builder.
 
-For SPA use cases:
-1. The `redirect_uri` in your OAuth provider configuration should point to a **frontend route** (e.g., `https://myapp.com/callback`).
-2. Your frontend route should extract the `code` and `state` from the URL.
-3. The frontend then performs a **POST** request to your backend's callback endpoint (e.g., `/api/auth/callback`) with these parameters.
-4. The backend uses `handle_oauth_callback_jwt` to exchange the code for a JWT and returns it to the frontend.
+```rust
+let authkestra = Authkestra::builder()
+    .provider(OAuth2Flow::new(GithubProvider::new(client_id, client_secret, redirect_uri)))
+    .jwt_secret(b"a-very-secret-key-that-is-at-least-32-bytes-long!!")
+    .build();
+```
+
+### 2. Handle the OAuth Callback
+In SPA mode, your callback handler uses `handle_oauth_callback_jwt`. This helper exchanges the OAuth code for an `AccessTokenResponse` containing your app's JWT.
+
+```rust
+use authkestra_axum::{handle_oauth_callback_jwt, OAuthCallbackParams};
+use axum::{extract::{State, Query}, response::IntoResponse};
+
+async fn callback_handler(
+    State(state): State<AppState>,
+    Query(params): Query<OAuthCallbackParams>,
+    cookies: tower_cookies::Cookies,
+) -> Result<impl IntoResponse, AuthkestraAxumError> {
+    let flow = &state.authkestra.providers["github"];
+
+    handle_oauth_callback_jwt(
+        flow.as_ref(),
+        cookies,
+        params,
+        state.authkestra.token_manager.get_manager(), // Access the configured manager
+        3600,
+        &state.authkestra.session_config,
+    )
+    .await
+}
+```
 
 ## Conclusion
 
 With Authkestra's Axum integration, you can move from a single-provider setup to a multi-provider system by simply adding more providers to the builder. The rest of your application remains clean and focused on your business logic.
 
-For a complete working example featuring multiple providers and session management, see the [axum_oauth.rs](https://github.com/marcjazz/authkestra/blob/main/authkestra-examples/src/bin/axum_oauth.rs) file in the `authkestra-examples` directory on GitHub.
+For a complete working example, see the [axum_credentials.rs](https://github.com/marcjazz/authkestra/tree/0.1.1/authkestra-examples/src/bin/axum_credentials.rs) file in the `authkestra-examples` directory on GitHub.

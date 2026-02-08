@@ -59,7 +59,7 @@ For username/password or other direct authentication methods, implement the
 
 ```rust title="example.rs"
 use async_trait::async_trait;
-use authkestra_core::{AuthError, CredentialsProvider, Identity};
+use authkestra_core::{error::AuthError, state::Identity, CredentialsProvider};
 use serde::Deserialize;
 use std::collections::HashMap;
 
@@ -106,7 +106,7 @@ your application's local user type:
 
 ```rust title="example.rs"
 use async_trait::async_trait;
-use authkestra_core::{AuthError, Identity, UserMapper};
+use authkestra_core::{error::AuthError, state::Identity, UserMapper};
 
 // Your application's user type
 #[derive(Debug, Clone)]
@@ -118,7 +118,7 @@ pub struct LocalUser {
 }
 
 pub struct DatabaseUserMapper {
-    pool: sqlx::PgPool,
+    pub pool: sqlx::PgPool,
 }
 
 #[async_trait]

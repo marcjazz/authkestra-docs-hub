@@ -11,7 +11,14 @@ of being **explicit, composable, and type-safe**. Authentication context is neve
 implicitly available—users must explicitly request it via extractors.
 
 ```rust title="example.rs"
-use authkestra_axum::{AuthSession, Authkestra};
+use authkestra::flow::Authkestra;
+use authkestra::axum::AuthSession;
+
+// Initialize Authkestra with typestate pattern
+let auth = Authkestra::builder()
+    .session_store(Arc::new(MemoryStore::default()))
+    .jwt_secret(b"your-secret")
+    .build();
 
 // Explicit injection via extractors - no magic!
 async fn protected(AuthSession(session): AuthSession) -> impl IntoResponse {
@@ -72,6 +79,7 @@ Authkestra favors **compile-time guarantees** over runtime flexibility:
 - **Trait-Based Extension:** Customization is achieved by implementing traits, not configuring dynamic strategies
 - **Explicit Injection:** Authentication context is never implicitly available; use extractors like `AuthSession`
 - **Framework Agnostic Core:** The flow crate is pure Rust logic, completely independent of any web framework
+- **Typestate Pattern:** The `Authkestra` service uses typestates to ensure that only configured features (like sessions or tokens) are accessible at compile-time.
 
 ## Next Steps
 

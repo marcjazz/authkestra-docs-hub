@@ -17,7 +17,7 @@ While `authkestra` provides specialized providers for popular services like GitH
 
 ## Configuration
 
-To use the generic provider, you utilize the [`OidcProvider`](https://github.com/marcjazz/authkestra/blob/main/authkestra-oidc/src/provider.rs) struct from the `authkestra-oidc` crate.
+To use the generic provider, you utilize the [`OidcProvider`](https://github.com/marcjazz/authkestra/tree/0.1.1/authkestra-oidc/src/provider.rs) struct from the `authkestra-oidc` crate.
 
 ### Required Fields
 
@@ -71,10 +71,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 3. Build Authkestra with the OIDC provider
     let authkestra = Authkestra::builder()
         .provider(OAuth2Flow::new(provider))
+        .session_store(Arc::new(authkestra_session::MemoryStore::default()))
         .build();
 
     // 4. Use it in your application (e.g., with Axum)
-    // let app = Router::new().merge(authkestra.axum_router());
+    // let state = AuthkestraState::from(authkestra.clone());
+    // let app = Router::new().merge(authkestra.axum_router()).with_state(state);
     
     Ok(())
 }
@@ -84,4 +86,4 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 The Generic OIDC provider offers a flexible way to integrate with a wide variety of identity services without needing a custom implementation for each one.
 
-For a full working example using Axum and environment variables, check out the [`oidc_generic.rs`](https://github.com/marcjazz/authkestra/blob/main/authkestra-examples/src/bin/oidc_generic.rs) file in the `authkestra-examples` crate.
+For a full working example using Axum and environment variables, check out the [`oidc_generic.rs`](https://github.com/marcjazz/authkestra/tree/0.1.1/authkestra-examples/src/bin/oidc_generic.rs) file in the `authkestra-examples` crate.

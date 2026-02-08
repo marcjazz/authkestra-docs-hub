@@ -2,10 +2,10 @@
 @import 'fumadocs-ui/css/neutral.css';
 @import 'fumadocs-ui/css/preset.css';
 
-@source '../../node_modules/fumadocs-ui/dist/**/*.js';
+@source '../node_modules/fumadocs-ui/dist/**/*.js';
 @source '../components/**/*.{ts,tsx}';
 @source './**/*.{ts,tsx}';
-@source '../../content/**/*.{md,mdx}';
+@source '../content/**/*.{md,mdx}';
 
 @theme {
   --font-sans: 'Inter', 'system-ui', 'sans-serif';
@@ -23,20 +23,29 @@
 
   --color-primary: hsl(var(--primary));
   --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-fd-primary: hsl(var(--primary));
+  --color-fd-primary-foreground: hsl(var(--primary-foreground));
 
   --color-secondary: hsl(var(--secondary));
   --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-fd-secondary: hsl(var(--secondary));
+  --color-fd-secondary-foreground: hsl(var(--secondary-foreground));
 
   --color-muted: hsl(var(--muted));
   --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-fd-muted: hsl(var(--muted));
+  --color-fd-muted-foreground: hsl(var(--muted-foreground));
 
   --color-accent: hsl(var(--accent));
   --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-fd-accent: hsl(var(--accent));
+  --color-fd-accent-foreground: hsl(var(--accent-foreground));
 
   --color-destructive: hsl(var(--destructive));
   --color-destructive-foreground: hsl(var(--destructive-foreground));
 
   --color-border: hsl(var(--border));
+  --color-fd-border: hsl(var(--border));
   --color-input: hsl(var(--input));
   --color-ring: hsl(var(--ring));
 
@@ -88,7 +97,7 @@
     --primary: 24 95% 53%;
     --primary-foreground: 0 0% 100%;
     
-    --secondary: 25 95% 53%;
+    --secondary: 18 86% 39%;
     --secondary-foreground: 0 0% 100%;
     
     --muted: 220 15% 92%;
@@ -129,7 +138,7 @@
     --primary: 24 95% 58%;
     --primary-foreground: 220 25% 8%;
     
-    --secondary: 25 95% 53%;
+    --secondary: 18 86% 45%;
     --secondary-foreground: 0 0% 100%;
     
     --muted: 220 20% 15%;

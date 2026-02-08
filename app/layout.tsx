@@ -14,7 +14,7 @@ export const metadata: Metadata = {
     default: 'Authkestra - Authentication for Rust Applications',
   },
   description: 'A modular, framework-agnostic authentication orchestration system for Rust.',
-  metadataBase: new URL('https://authkestra.js.org'), // Placeholder URL
+  metadataBase: new URL('https://authkestra.com'), // Placeholder URL
 };
 
 export default function Layout({ children }: { children: ReactNode }) {

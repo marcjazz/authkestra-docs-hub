@@ -148,8 +148,8 @@ You can implement the `SessionStore` trait for custom backends like MongoDB, Dyn
 
 The best way to learn how to implement a custom store is to look at the source code of the existing implementations in the `authkestra-session` crate for guidance:
 
-- [`MemoryStore`](https://github.com/marcjazz/authkestra/blob/main/authkestra-session/src/memory.rs): A simple in-memory implementation.
-- [`RedisStore`](https://github.com/marcjazz/authkestra/blob/main/authkestra-session/src/redis.rs): An implementation using Redis with automatic expiration.
-- [`SqlStore`](https://github.com/marcjazz/authkestra/blob/main/authkestra-session/src/sql.rs): A persistent implementation for SQL databases using `sqlx`.
+- [`MemoryStore`](https://github.com/marcjazz/authkestra/tree/0.1.1/authkestra-session/src/memory.rs): A simple in-memory implementation.
+- [`RedisStore`](https://github.com/marcjazz/authkestra/tree/0.1.1/authkestra-session/src/redis.rs): An implementation using Redis with automatic expiration.
+- [`SqlStore`](https://github.com/marcjazz/authkestra/tree/0.1.1/authkestra-session/src/sql.rs): A persistent implementation for SQL databases using `sqlx`.
 
 These implementations provide excellent references for handling session serialization, database connectivity, and error mapping while adhering to the `SessionStore` trait.

@@ -41,20 +41,21 @@ let github = GithubProvider::new(client_id, client_secret, redirect_uri);
 let authkestra = Authkestra::builder()
     .provider(OAuth2Flow::new(github))
     .session_store(session_store)
+    .session_config(SessionConfig::default()) // Optional: customize session
     .build();
 
 // 3. Register Routes (Axum example)
 let app = Router::new()
     .merge(authkestra.axum_router())
-    .with_state(state);
+    .with_state(AuthkestraState::from(authkestra));
 ```
 
 ## Full Examples
 
 For complete working implementations including server setup and configuration, see the following examples:
 
-- [Axum OAuth2 Example](https://github.com/marcjazz/authkestra/blob/main/authkestra-examples/src/bin/axum_oauth.rs)
-- [Actix-web GitHub Example](https://github.com/marcjazz/authkestra/blob/main/authkestra-examples/src/bin/actix_github.rs)
+- [Axum OAuth2 Example](https://github.com/marcjazz/authkestra/tree/0.1.1/authkestra-examples/src/bin/axum_oauth.rs)
+- [Actix-web GitHub Example](https://github.com/marcjazz/authkestra/tree/0.1.1/authkestra-examples/src/bin/actix_github.rs)
 
 ## PKCE Enhancement
 

@@ -39,6 +39,7 @@ dotenvy = "0.15"
 | `oidc` | OpenID Connect support with discovery and validation |
 | `session` | Session persistence layer |
 | `token` | JWT signing, verification, and offline validation |
+| `flow` | Core authentication flows (OAuth2, PKCE, Device Flow) |
 
 You can combine multiple features:
 
@@ -50,7 +51,8 @@ authkestra = { version = "0.1.1", features = [
     "google",
     "discord",
     "oidc",
-    "session"
+    "session",
+    "flow"
 ] }
 ```
 
@@ -67,13 +69,23 @@ authkestra-session = { version = "0.1.1", features = ["redis"] }
 
 For advanced users, individual crates can be used independently:
 
+| Crate | Version |
+| ----- | ------- |
+| `authkestra-core` | `0.1.1` |
+| `authkestra-flow` | `0.1.1` |
+| `authkestra-axum` | `0.1.1` |
+| `authkestra-actix` | `0.1.1` |
+| `authkestra-session` | `0.1.1` |
+| `authkestra-token` | `0.1.1` |
+| `authkestra-oidc` | `0.1.1` |
+
 ```toml title="Cargo.toml"
 [dependencies]
-authkestra-core = "0.1"
-authkestra-flow = "0.1"
-authkestra-axum = "0.1"
-authkestra-providers-github = "0.1"
-authkestra-session = { version = "0.1", features = ["sqlx-store"] }
+authkestra-core = "0.1.1"
+authkestra-flow = "0.1.1"
+authkestra-axum = "0.1.1"
+authkestra-providers-github = "0.1.1"
+authkestra-session = { version = "0.1.1", features = ["sqlx-store"] }
 ```
 
 <Callout type="tip" title="When to use individual crates">

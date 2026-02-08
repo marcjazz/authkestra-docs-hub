@@ -106,7 +106,7 @@ export default function LandingPage() {
         <div className='container mx-auto px-6'>
           <div className='text-center mb-16'>
             <h2 className='text-3xl md:text-4xl font-bold mb-4'>
-              Built for <span className='text-fd-primary'>Rust Developers</span>
+              Built for <span className='text-fd-secondary'>Rust Developers</span>
             </h2>
             <p className='text-lg text-fd-muted-foreground max-w-2xl mx-auto'>
               Designed with Rust's philosophy in mind: explicit, composable, and
@@ -118,10 +118,10 @@ export default function LandingPage() {
             {features.map((feature) => (
               <div
                 key={feature.title}
-                className='p-8 bg-fd-background rounded-xl border border-fd-border shadow-sm hover:border-fd-primary/30 transition-colors'
+                className='p-8 bg-fd-background rounded-xl border border-fd-border shadow-sm hover:border-fd-secondary/30 transition-colors'
               >
-                <div className='w-12 h-12 rounded-lg bg-fd-primary/10 flex items-center justify-center mb-6'>
-                  <feature.icon className='w-6 h-6 text-fd-primary' />
+                <div className='w-12 h-12 rounded-lg bg-fd-secondary/10 flex items-center justify-center mb-6'>
+                  <feature.icon className='w-6 h-6 text-fd-secondary' />
                 </div>
                 <h3 className='text-xl font-semibold mb-3'>{feature.title}</h3>
                 <p className='text-fd-muted-foreground leading-relaxed'>
@@ -154,8 +154,8 @@ export default function LandingPage() {
                   'Built-in support for popular providers',
                 ].map((item, idx) => (
                   <li key={idx} className='flex items-start gap-3'>
-                    <div className='w-6 h-6 rounded-full bg-fd-primary/20 flex items-center justify-center mt-0.5'>
-                      <Zap className='w-3 h-3 text-fd-primary' />
+                    <div className='w-6 h-6 rounded-full bg-fd-secondary/20 flex items-center justify-center mt-0.5'>
+                      <Zap className='w-3 h-3 text-fd-secondary' />
                     </div>
                     <span className='text-fd-muted-foreground'>{item}</span>
                   </li>
@@ -171,11 +171,13 @@ export default function LandingPage() {
             </div>
 
             <CodeBlock
-              filename="main.rs"
-              language="rust"
-              code={`use authkestra_axum::{Authkestra, AuthkestraAxumExt, AuthSession};
-use authkestra_flow::OAuth2Flow;
+              filename='main.rs'
+              language='rust'
+              code={`
+use authkestra_axum::{AuthkestraAxumExt, AuthSession};
+use authkestra_flow::{Authkestra, OAuth2Flow};
 use authkestra_providers_github::GithubProvider;
+use authkestra_session::MemoryStore;
 
 #[tokio::main]
 async fn main() {
@@ -187,6 +189,7 @@ async fn main() {
 
     let authkestra = Authkestra::builder()
         .provider(OAuth2Flow::new(provider))
+        .session_store(Arc::new(MemoryStore::default()))
         .build();
 
     let app = Router::new()
@@ -196,7 +199,7 @@ async fn main() {
     axum::serve(listener, app).await.unwrap();
 }
 
-async fn me(session: AuthSession) -> String {
+async fn me(AuthSession(session): AuthSession) -> String {
     format!("Hello, {}!", session.identity.username)
 }`}
             />
@@ -209,8 +212,8 @@ async fn me(session: AuthSession) -> String {
         <div className='container mx-auto px-6'>
           <div className='flex flex-col md:flex-row items-center justify-between gap-8'>
             <div className='flex items-center gap-3'>
-              <div className='w-8 h-8 rounded-lg bg-fd-primary flex items-center justify-center'>
-                <span className='text-fd-primary-foreground font-bold'>A</span>
+              <div className='w-10 h-10 rounded-lg flex items-center justify-center'>
+                <img src={`/logo.png`} />
               </div>
               <span className='font-semibold text-xl'>Authkestra</span>
             </div>

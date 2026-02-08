@@ -20,12 +20,14 @@ The `TokenManager` is the primary interface for applications that need to handle
 To use the `TokenManager`, you initialize it with a secret key and an optional issuer.
 
 ```rust
-use authkestra_token::TokenManager;
+use authkestra_flow::Authkestra;
 
-let secret = b"your-256-bit-secret-key-here";
-let issuer = Some("https://auth.your-app.com".to_string());
+let authkestra = Authkestra::builder()
+    .jwt_secret(b"your-256-bit-secret-key-here")
+    .jwt_issuer("https://auth.your-app.com")
+    .build();
 
-let token_manager = TokenManager::new(secret, issuer);
+let token_manager = authkestra.token_manager();
 ```
 
 ### Issuing Tokens
@@ -104,7 +106,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let jwks_uri = "https://www.googleapis.com/oauth2/v3/certs".to_string();
     let refresh_interval = Duration::from_secs(3600); // Refresh keys every hour
 
-    let cache = JwksCache::new(jwks_uri, refresh_interval).await?;
+    let cache = JwksCache::new(jwks_uri, refresh_interval);
 
     // 2. Configure the Validation rules
     let mut validation = Validation::new(Algorithm::RS256);
@@ -127,4 +129,4 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 Whether you are building your own authentication flow or integrating with existing identity providers, `authkestra-token` provides the tools to handle JWTs securely and efficiently.
 
-For a full implementation example, including error handling and async integration, see the [`actix_resource_server.rs`](https://github.com/marcjazz/authkestra/blob/main/authkestra-examples/src/bin/actix_resource_server.rs) file in the `authkestra-examples` crate on GitHub.
+For a full implementation example, including error handling and async integration, see the [`actix_resource_server.rs`](https://github.com/marcjazz/authkestra/tree/0.1.1/authkestra-examples/src/bin/actix_resource_server.rs) file in the `authkestra-examples` crate on GitHub.

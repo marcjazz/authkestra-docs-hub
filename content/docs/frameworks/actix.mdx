@@ -43,10 +43,13 @@ async fn protected_resource(AuthToken(claims): AuthToken) -> impl Responder {
 
 ## Route Registration
 
-The `actix_scope()` helper method automatically registers the necessary OAuth routes (`/auth/{provider}/login` and `/auth/{provider}/callback`) for all providers configured in your `Authkestra` instance.
+The `actix_scope()` helper method automatically registers the necessary OAuth routes (`/auth/{provider}` and `/auth/{provider}/callback`) for all providers configured in your `Authkestra` instance.
 
 ```rust
 use authkestra_actix::AuthkestraActixExt;
+use authkestra_flow::Authkestra;
+
+// ... configure authkestra ...
 
 App::new()
     .app_data(web::Data::new(authkestra.clone()))
@@ -55,35 +58,57 @@ App::new()
 
 ---
 
+## Configuration with Typestates
+
+Authkestra uses a typestate pattern to ensure that your application is correctly configured at compile time.
+
+### Session-based Application
+
+For a traditional web app using sessions:
+
+```rust
+use authkestra_flow::Authkestra;
+use authkestra_session::MemoryStore;
+use std::sync::Arc;
+
+let session_store = Arc::new(MemoryStore::default());
+
+let authkestra = Authkestra::builder()
+    .session_store(session_store)
+    .session_config(SessionConfig::default())
+    .build();
+```
+
+### Token-based Application (Stateless)
+
+For an API that issues or validates JWTs:
+
+```rust
+use authkestra_flow::Authkestra;
+use std::sync::Arc;
+
+let authkestra = Authkestra::builder()
+    .jwt_secret(b"your-32-byte-long-secret-key-here!!")
+    .jwt_issuer("my-app")
+    .build();
+```
+
 ## SPA Example: JWT Authentication
 
 In a Single Page Application (SPA), you typically want the backend to exchange the OAuth code for a JWT that the frontend can store and use for subsequent requests.
 
-### SPA Flow and Redirect URI
-
-For SPA use cases:
-1. The `redirect_uri` in your OAuth provider configuration should point to a **frontend route** (e.g., `https://myapp.com/callback`).
-2. Your frontend route should extract the `code` and `state` from the URL.
-3. The frontend then performs a **POST** request to your backend's callback endpoint (e.g., `/api/auth/callback`) with these parameters.
-4. The backend uses `handle_oauth_callback_jwt_erased` to exchange the code for a JWT and returns it to the frontend.
-
-### 1. Configure the Token Manager
-To issue JWTs, you must provide a `TokenManager` to the `Authkestra` builder. This manager handles signing and verifying your application's tokens.
+### 1. Configure Authkestra
+To issue JWTs, you must provide a `TokenManager` (or use the `jwt_secret` helper) to the `Authkestra` builder.
 
 ```rust
-let token_manager = Arc::new(TokenManager::new(
-    b"a-very-secret-key-that-is-at-least-32-bytes-long!!",
-    None,
-));
-
 let authkestra = Authkestra::builder()
     .provider(OAuth2Flow::new(GithubProvider::new(client_id, client_secret, redirect_uri)))
-    .token_manager(token_manager.clone())
+    .jwt_secret(b"a-very-secret-key-that-is-at-least-32-bytes-long!!")
     .build();
 ```
 
 ### 2. Handle the OAuth Callback
-In SPA mode, your callback handler uses `handle_oauth_callback_jwt_erased`. Instead of setting a session cookie, this helper exchanges the OAuth code for an `AccessTokenResponse` containing your app's JWT.
+In SPA mode, your callback handler uses `handle_oauth_callback_jwt_erased`. This helper exchanges the OAuth code for an `AccessTokenResponse` containing your app's JWT.
 
 ```rust
 use authkestra_actix::{handle_oauth_callback_jwt_erased, OAuthCallbackParams};
@@ -96,13 +121,11 @@ async fn callback_handler(
 ) -> impl Responder {
     let flow = &data.authkestra.providers["github"];
 
-    // ... other setup code ...
-
     handle_oauth_callback_jwt_erased(
         flow,
         &req,
         params.into_inner(),
-        data.authkestra.token_manager.clone(),
+        data.authkestra.token_manager.get_manager(), // Access the configured manager
         3600,
         &data.authkestra.session_config,
     )
@@ -155,6 +178,6 @@ async fn external_api(Jwt(claims): Jwt<MyClaims>) -> impl Responder {
 
 ## Conclusion
 
-By breaking down the authentication logic into extractors and specialized handlers, Authkestra allows you to support both traditional sessions and modern JWT-based flows with ease.
+By leveraging typestates and specialized extractors, `authkestra-actix` provides a robust and type-safe way to handle authentication in Actix Web.
 
-For a complete working implementation, including the frontend logic, check out the [actix_spa_jwt.rs](https://github.com/mscatena/authkestra/blob/main/authkestra-examples/src/bin/actix_spa_jwt.rs) example in our GitHub repository.
+For a complete working implementation, check out the [actix_credentials.rs](https://github.com/mscatena/authkestra/tree/0.1.1/authkestra-examples/src/bin/actix_credentials.rs) example in our GitHub repository.
