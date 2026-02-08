@@ -102,11 +102,19 @@ use std::time::Duration;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
     // 1. Initialize the JWKS Cache (Offline Validator)
-    // This example uses Google's public JWKS endpoint
-    let jwks_uri = "https://www.googleapis.com/oauth2/v3/certs".to_string();
-    let refresh_interval = Duration::from_secs(3600); // Refresh keys every hour
+    // This example uses Google's OIDC Provider
+    let issuer =
+        std::env::var("OIDC_ISSUER").unwrap_or_else(|_| "https://accounts.google.com".to_string());
+    let ProviderMetadata { jwks_uri, .. } =
+        ProviderMetadata::discover(&issuer, reqwest::Client::new())
+            .await
+            .expect("Provider metadata discovery failed!");
 
-    let cache = JwksCache::new(jwks_uri, refresh_interval);
+    println!("🚀 Starting Actix Resource Server...");
+    println!("🔑 Using JWKS URI: {}", jwks_uri);
+
+    // 2. Initialize the JWKS Cache
+    let cache = Arc::new(JwksCache::new(jwks_uri, Duration::from_secs(3600)));
 
     // 2. Configure the Validation rules
     let mut validation = Validation::new(Algorithm::RS256);
