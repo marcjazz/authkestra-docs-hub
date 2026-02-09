@@ -17,7 +17,7 @@
     "---Guides---",
     "guides/oidc",
     "guides/jwt-validation",
-    "---Frameworks---",
+    "---Frameworks Integration---",
     "frameworks/actix",
     "frameworks/axum",
     "---Providers---",

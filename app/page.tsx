@@ -52,14 +52,45 @@ const features = [
   },
 ]
 
+import { ThemeToggle } from '@/components/ThemeToggle'
+
 export default function LandingPage() {
   return (
     <main className='flex flex-col min-h-screen'>
+      {/* Header */}
+      <header className='fixed top-0 left-0 right-0 z-50 border-b bg-fd-background/80 backdrop-blur-md'>
+        <div className='container mx-auto px-6 h-16 flex items-center justify-between'>
+          <div className='flex items-center gap-3'>
+            <div className='w-8 h-8 rounded-lg flex items-center justify-center'>
+              <img src={`/logo.png`} alt="Authkestra Logo" />
+            </div>
+            <span className='font-semibold text-lg'>Authkestra</span>
+          </div>
+          <nav className='hidden md:flex items-center gap-8'>
+            <Link href='/docs' className='text-sm font-medium text-fd-muted-foreground hover:text-fd-foreground transition-colors'>
+              Documentation
+            </Link>
+            <a href='https://github.com/marcjazz/authkestra' target='_blank' rel='noopener noreferrer' className='text-sm font-medium text-fd-muted-foreground hover:text-fd-foreground transition-colors'>
+              GitHub
+            </a>
+          </nav>
+          <div className='flex items-center gap-4'>
+            <ThemeToggle />
+            <Link
+              href='/docs'
+              className='hidden sm:inline-flex items-center justify-center rounded-md bg-fd-primary px-4 py-2 text-sm font-medium text-fd-primary-foreground shadow transition-colors hover:bg-fd-primary/90 dark:bg-accent/10 dark:text-accent dark:hover:bg-accent/20'
+            >
+              Get Started
+            </Link>
+          </div>
+        </div>
+      </header>
+
       {/* Hero Section */}
       <section className='relative pt-32 pb-20 overflow-hidden border-b'>
         <div className='container mx-auto px-6 relative z-10'>
           <div className='max-w-4xl mx-auto text-center'>
-            <div className='inline-flex items-center gap-2 px-4 py-1.5 mb-6 rounded-full border border-fd-primary/30 bg-fd-primary/5'>
+            <div className='inline-flex items-center gap-2 px-4 py-1.5 mb-6 rounded-full border border-fd-primary/30 bg-fd-primary/5 data:border-accent/30 dark:bg-accent/5 dark:text-accent'>
               <Zap className='w-4 h-4 text-fd-primary' />
               <span className='text-sm font-medium'>v0.1.1 Released</span>
             </div>
@@ -82,7 +113,7 @@ export default function LandingPage() {
             <div className='flex flex-wrap items-center justify-center gap-4'>
               <Link
                 href='/docs'
-                className='inline-flex items-center justify-center rounded-md bg-fd-primary px-6 py-3 text-sm font-medium text-fd-primary-foreground shadow transition-colors hover:bg-fd-primary/90'
+                className='inline-flex items-center justify-center rounded-md bg-fd-primary px-6 py-3 text-sm font-medium text-fd-primary-foreground shadow transition-colors hover:bg-fd-primary/90 dark:bg-accent/10 dark:text-accent dark:hover:bg-accent/20'
               >
                 Get Started
                 <ArrowRight className='w-4 h-4 ml-2' />
@@ -106,7 +137,7 @@ export default function LandingPage() {
         <div className='container mx-auto px-6'>
           <div className='text-center mb-16'>
             <h2 className='text-3xl md:text-4xl font-bold mb-4'>
-              Built for <span className='text-fd-secondary'>Rust Developers</span>
+              Built for <span className='text-fd-secondary dark:text-accent'>Rust Developers</span>
             </h2>
             <p className='text-lg text-fd-muted-foreground max-w-2xl mx-auto'>
               Designed with Rust's philosophy in mind: explicit, composable, and
@@ -120,8 +151,8 @@ export default function LandingPage() {
                 key={feature.title}
                 className='p-8 bg-fd-background rounded-xl border border-fd-border shadow-sm hover:border-fd-secondary/30 transition-colors'
               >
-                <div className='w-12 h-12 rounded-lg bg-fd-secondary/10 flex items-center justify-center mb-6'>
-                  <feature.icon className='w-6 h-6 text-fd-secondary' />
+                <div className='w-12 h-12 rounded-lg bg-fd-secondary/10 dark:bg-accent/10 flex items-center justify-center mb-6'>
+                  <feature.icon className='w-6 h-6 text-fd-secondary dark:text-accent' />
                 </div>
                 <h3 className='text-xl font-semibold mb-3'>{feature.title}</h3>
                 <p className='text-fd-muted-foreground leading-relaxed'>
@@ -163,7 +194,7 @@ export default function LandingPage() {
               </ul>
               <Link
                 href='/docs/quickstart'
-                className='inline-flex items-center justify-center rounded-md bg-fd-primary px-6 py-3 text-sm font-medium text-fd-primary-foreground shadow transition-colors hover:bg-fd-primary/90'
+                className='inline-flex items-center justify-center rounded-md bg-fd-primary px-6 py-3 text-sm font-medium text-fd-primary-foreground shadow transition-colors hover:bg-fd-primary/90 dark:bg-accent/10 dark:text-accent dark:hover:bg-accent/20'
               >
                 View Quick Start Guide
                 <ArrowRight className='w-4 h-4 ml-2' />
@@ -193,7 +224,7 @@ async fn main() {
         .build();
 
     let app = Router::new()
-        .authkestra_routes(&authkestra)
+        .merge(authkestra.axum_router())
         .route("/me", get(me));
 
     axum::serve(listener, app).await.unwrap();
