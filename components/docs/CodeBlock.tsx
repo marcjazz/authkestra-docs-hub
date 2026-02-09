@@ -129,7 +129,10 @@ export function CodeBlock({
       {/* Code content */}
       <Highlight theme={rustTheme} code={code.trim()} language={language}>
         {({ className, style, tokens, getLineProps, getTokenProps }) => (
-          <pre className={`${className} scrollbar-thin`} style={style}>
+          <pre
+            className={`${className} scrollbar-thin overflow-x-auto`}
+            style={style}
+          >
             {tokens.map((line, i) => (
               <div key={i} {...getLineProps({ line })} className='table-row'>
                 {showLineNumbers && (

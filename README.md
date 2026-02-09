@@ -1,6 +1,6 @@
 # Authkestra Documentation Hub
 
-The official documentation for [Authkestra](https://github.com/mscatena/authkestra), a flexible and lightweight authentication library for Rust.
+The official documentation for [Authkestra](https://github.com/marcjazz/authkestra), a flexible and lightweight authentication library for Rust.
 
 ## Features
 
@@ -28,7 +28,7 @@ The official documentation for [Authkestra](https://github.com/mscatena/authkest
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/mscatena/authkestra-docs-hub.git
+   git clone https://github.com/marcjazz/authkestra-docs-hub.git
    cd authkestra-docs-hub
    ```
 
