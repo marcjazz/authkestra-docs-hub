@@ -97,6 +97,162 @@ let guard = AuthkestraGuard::builder()
 | `AllSuccess` | Requires all strategies to succeed. Returns the identity from the last one. |
 | `FailFast` | Only attempts the first strategy. If it fails or returns `None`, stops immediately. |
 
+## Built-in Strategies
+
+While `authkestra-guard` provides `JwtStrategy` for OIDC and JWT-based authentication, `authkestra-core` includes several other built-in strategies for common use cases.
+
+### BasicStrategy
+
+The `BasicStrategy` handles standard HTTP Basic Authentication. It requires a type that implements the `BasicAuthenticator` trait.
+
+```rust
+use authkestra_core::strategy::{BasicAuthenticator, BasicStrategy};
+use authkestra_core::error::AuthError;
+use async_trait::async_trait;
+
+struct MyAuthenticator;
+
+#[async_trait]
+impl BasicAuthenticator for MyAuthenticator {
+    type Identity = User;
+
+    async fn authenticate(&self, user: &str, pass: &str) -> Result<Option<User>, AuthError> {
+        if user == "admin" && pass == "secret" {
+            Ok(Some(User { id: "1".into(), username: "admin".into() }))
+        } else {
+            Err(AuthError::InvalidCredentials)
+        }
+    }
+}
+
+let strategy = BasicStrategy::new(MyAuthenticator);
+```
+
+### TokenStrategy
+
+The `TokenStrategy` validates `Bearer` tokens from the `Authorization` header. It requires a type that implements the `TokenValidator` trait.
+
+```rust
+use authkestra_core::strategy::{TokenValidator, TokenStrategy};
+
+struct MyTokenValidator;
+
+#[async_trait]
+impl TokenValidator for MyTokenValidator {
+    type Identity = User;
+
+    async fn validate(&self, token: &str) -> Result<Option<User>, AuthError> {
+        if token == "valid-token" {
+            Ok(Some(User { id: "1".into(), username: "token_user".into() }))
+        } else {
+            Ok(None)
+        }
+    }
+}
+
+let strategy = TokenStrategy::new(MyTokenValidator);
+```
+
+### HeaderStrategy
+
+The `HeaderStrategy` allows you to validate a custom HTTP header using a closure or a function.
+
+```rust
+use authkestra_core::strategy::HeaderStrategy;
+use http::header::HeaderName;
+
+let header_name = HeaderName::from_static("x-api-key");
+let strategy = HeaderStrategy::new(header_name, |key| async move {
+    if key == "secret-key" {
+        Ok(Some(User { id: "1".into(), username: "api_user".into() }))
+    } else {
+        Ok(None)
+    }
+});
+```
+
+### SessionStrategy
+
+The `SessionStrategy` extracts a session ID from a cookie and uses a `SessionProvider` to load the associated identity.
+
+```rust
+use authkestra_core::strategy::{SessionProvider, SessionStrategy};
+
+struct MySessionProvider;
+
+#[async_trait]
+impl SessionProvider for MySessionProvider {
+    type Identity = User;
+
+    async fn load_session(&self, session_id: &str) -> Result<Option<User>, AuthError> {
+        // Load user from database or cache using session_id
+        Ok(Some(User { id: "1".into(), username: "session_user".into() }))
+    }
+}
+
+let strategy = SessionStrategy::new(MySessionProvider, "session_id");
+```
+
+## Custom Authentication Strategy
+
+You can implement the `AuthenticationStrategy` trait to create your own authentication methods, such as custom headers, API keys, or specialized validation logic.
+
+### Implementing AuthenticationStrategy
+
+The trait requires implementing the `authenticate` method, which receives the HTTP request `Parts` and returns an `Option<Identity>`.
+
+```rust
+use async_trait::async_trait;
+use authkestra_core::error::AuthError;
+use authkestra_core::strategy::AuthenticationStrategy;
+use axum::http::request::Parts;
+
+#[async_trait]
+impl AuthenticationStrategy<User> for CustomHeaderStrategy {
+    async fn authenticate(&self, parts: &Parts) -> Result<Option<User>, AuthError> {
+        // Look for the X-API-Key header
+        if let Some(value) = parts.headers.get("X-API-Key") {
+            if let Ok(value_str) = value.to_str() {
+                // Validate the header value
+                if value_str == self.api_key {
+                    return Ok(Some(User {
+                        id: "1".to_string(),
+                        username: "api_user".to_string(),
+                    }));
+                } else {
+                    return Err(AuthError::InvalidCredentials);
+                }
+            }
+        }
+
+        // Return Ok(None) to allow other strategies in the chain to try
+        Ok(None)
+    }
+}
+```
+
+## Unified Auth Extractor
+
+`authkestra-axum` and `authkestra-actix` provide a unified `Auth<T>` extractor that simplifies accessing the authenticated user in your route handlers.
+
+### Usage in Axum
+
+To use the extractor, ensure your `AuthkestraGuard` is shared as state in your router.
+
+```rust
+use authkestra_axum::Auth;
+
+async fn protected_route(Auth(user): Auth<User>) -> String {
+    format!("Hello, {}! Your ID is {}.", user.username, user.id)
+}
+
+fn app(guard: Arc<AuthkestraGuard<User>>) -> Router {
+    Router::new()
+        .route("/protected", get(protected_route))
+        .with_state(guard)
+}
+```
+
 ## Low-level API
 
 If you don't need the full Guard orchestration, you can use the lower-level validation functions:
