@@ -92,7 +92,7 @@ export default function LandingPage() {
           <div className='max-w-4xl mx-auto text-center'>
             <div className='inline-flex items-center gap-2 px-4 py-1.5 mb-6 rounded-full border border-fd-primary/30 bg-fd-primary/5 data:border-accent/30 dark:bg-accent/5 dark:text-accent'>
               <Zap className='w-4 h-4 text-fd-primary' />
-              <span className='text-sm font-medium'>v0.1.1 Released</span>
+              <span className='text-sm font-medium'>v0.1.2 Released</span>
             </div>
 
             <h1 className='text-5xl md:text-6xl lg:text-7xl font-bold tracking-tight mb-6'>
