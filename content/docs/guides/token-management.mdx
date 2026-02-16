@@ -1,0 +1,79 @@
+---
+title: Token Management
+description: Learn how to manage and validate tokens using authkestra-token.
+---
+
+# Token Management
+
+JSON Web Tokens (JWT) are a core component of modern authentication systems. They allow for secure, stateless communication between your services and clients. `authkestra-token` provides a robust set of utilities for issuing and validating your application's own tokens using symmetric encryption (HS256).
+
+The `TokenManager` is the primary interface for applications that need to handle their own token lifecycle, such as issuing a token after a user logs in with a password or providing machine-to-machine tokens.
+
+### Configuration
+
+To use the `TokenManager`, you initialize it with a secret key and an optional issuer.
+
+```rust
+use authkestra_flow::Authkestra;
+
+let authkestra = Authkestra::builder()
+    .jwt_secret(b"your-256-bit-secret-key-here")
+    .jwt_issuer("https://auth.your-app.com")
+    .build();
+
+let token_manager = authkestra.token_manager();
+```
+
+### Issuing Tokens
+
+`TokenManager` supports issuing tokens for two main scenarios:
+
+#### User Tokens
+These tokens include the user's `Identity` data, which is useful for propagating user information through your services.
+
+```rust
+use authkestra_core::Identity;
+
+let identity = Identity {
+    external_id: "user_456".to_string(),
+    email: Some("hello@authkestra.io".to_string()),
+    // ... other identity fields
+};
+
+let token = token_manager.issue_user_token(
+    identity,
+    3600, // Duration in seconds (1 hour)
+    Some("read:data write:data".to_string()) // Optional scopes
+)?;
+```
+
+#### Client Tokens (M2M)
+Used for service-to-service communication where a specific user identity is not involved.
+
+```rust
+let m2m_token = token_manager.issue_client_token(
+    "internal-service-a",
+    86400, // Duration in seconds (24 hours)
+    Some("internal:sync".to_string())
+)?;
+```
+
+### Validating Tokens
+
+Validation is performed using the same `TokenManager` instance. It automatically checks the signature and the expiration date.
+
+```rust
+match token_manager.validate_token(&received_token) {
+    Ok(claims) => {
+        println!("Valid token for subject: {}", claims.sub);
+        if let Some(identity) = claims.identity {
+            println!("User email: {:?}", identity.email);
+        }
+    },
+    Err(e) => eprintln!("Token validation failed: {}", e),
+}
+```
+
+## Conclusion
+
+`authkestra-token` provides the tools to handle your application's own JWTs securely and efficiently. For validating third-party tokens using JWKS, please refer to the [Authkestra Guard](/docs/guard) documentation.

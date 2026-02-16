@@ -218,7 +218,6 @@ async fn callback_handler(
         params,
         state.authkestra.token_manager.get_manager(), // Access the configured manager
         3600,
-        &state.authkestra.session_config,
     )
     .await
 }
@@ -228,4 +227,4 @@ async fn callback_handler(
 
 With Authkestra's Axum integration, you can move from a single-provider setup to a multi-provider system by simply adding more providers to the builder. The rest of your application remains clean and focused on your business logic.
 
-For a complete working example, see the [axum_credentials.rs](https://github.com/marcjazz/authkestra/tree/0.1.1/authkestra-examples/src/bin/axum_credentials.rs) file in the `authkestra-examples` directory on GitHub.
+For a complete working example, see the [axum_credentials.rs](https://github.com/marcjazz/authkestra/blob/main/authkestra-examples/src/bin/axum_credentials.rs) file in the `authkestra-examples` directory on GitHub.
