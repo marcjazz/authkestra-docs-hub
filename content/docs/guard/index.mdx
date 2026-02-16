@@ -1,0 +1,112 @@
+---
+title: Authkestra Guard
+description: Protecting your API with Authkestra Guard and Offline Token Validation.
+---
+
+# Authkestra Guard
+
+`authkestra-guard` is a high-level crate designed to protect your APIs by orchestrating multiple authentication strategies. It is particularly powerful for **Offline Validation**, allowing your services to verify JWTs issued by external providers (like Google, Auth0, or Microsoft Entra) without making a network call for every request.
+
+## Key Features
+
+- **Multi-strategy Support**: Chain multiple authentication methods (e.g., JWT, API Keys, Session).
+- **Flexible Policies**: Define how strategies interact (`FirstSuccess`, `AllSuccess`, `FailFast`).
+- **Offline JWT Validation**: Local verification of JWTs using JSON Web Key Sets (JWKS).
+- **JWKS Caching**: Efficient caching and automatic rotation of public keys.
+
+## Installation
+
+Add `authkestra-guard` to your `Cargo.toml`:
+
+```toml
+[dependencies]
+authkestra-guard = "0.1.0"
+# You'll likely need these for defining claims
+serde = { version = "1.0", features = ["derive"] }
+```
+
+## Offline JWT Validation
+
+Offline validation allows your application to verify the authenticity of a JWT locally. This is essential for high-performance resource servers.
+
+### 1. Configure Validation
+
+Use the `ValidationConfig` builder to specify your provider's JWKS endpoint and validation rules.
+
+```rust
+use authkestra_guard::jwt::ValidationConfig;
+use std::time::Duration;
+use jsonwebtoken::Algorithm;
+
+let config = ValidationConfig::builder()
+    .jwks_url("https://www.googleapis.com/oauth2/v3/certs")
+    .refresh_interval(Duration::from_secs(3600)) // Refresh keys every hour
+    .issuer("https://accounts.google.com")
+    .audience("your-client-id")
+    .algorithms(vec![Algorithm::RS256])
+    .build();
+```
+
+### 2. Using JwtStrategy
+
+The `JwtStrategy` implements the `AuthenticationStrategy` trait and can be used directly or within the `AuthkestraGuard`.
+
+```rust
+use authkestra_guard::jwt::{JwtStrategy, Claims};
+use authkestra_guard::AuthkestraGuard;
+
+// I is your Identity type, which must implement Deserialize
+let jwt_strategy = JwtStrategy::<Claims>::new(config);
+
+let guard = AuthkestraGuard::builder()
+    .strategy(jwt_strategy)
+    .build();
+```
+
+### 3. Validating a Request
+
+The `AuthkestraGuard` works with `http::request::Parts`, making it compatible with most Rust web frameworks.
+
+```rust
+// In your middleware or handler
+let parts = request.parts(); // Simplified
+match guard.authenticate(parts).await {
+    Ok(Some(claims)) => println!("Authenticated user: {:?}", claims.sub),
+    Ok(None) => println!("No valid authentication found"),
+    Err(e) => eprintln!("Authentication error: {}", e),
+}
+```
+
+## Multi-Strategy Guard
+
+You can combine multiple strategies and define an `AuthPolicy`.
+
+```rust
+use authkestra_guard::{AuthkestraGuard, AuthPolicy};
+
+let guard = AuthkestraGuard::builder()
+    .strategy(jwt_strategy)
+    // .strategy(api_key_strategy) // Assuming another strategy exists
+    .policy(AuthPolicy::FirstSuccess)
+    .build();
+```
+
+| Policy | Description |
+| :--- | :--- |
+| `FirstSuccess` | (Default) Returns the first successful identity. Fails if any strategy returns an error. |
+| `AllSuccess` | Requires all strategies to succeed. Returns the identity from the last one. |
+| `FailFast` | Only attempts the first strategy. If it fails or returns `None`, stops immediately. |
+
+## Low-level API
+
+If you don't need the full Guard orchestration, you can use the lower-level validation functions:
+
+```rust
+use authkestra_guard::jwt::{validate_jwt, JwksCache};
+use jsonwebtoken::Validation;
+
+let cache = JwksCache::new(jwks_uri, Duration::from_secs(3600));
+let validation = Validation::new(Algorithm::RS256);
+
+let claims = validate_jwt(token, &cache, &validation).await?;
+```

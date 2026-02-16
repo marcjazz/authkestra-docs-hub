@@ -9,6 +9,7 @@
     "core/traits",
     "core/typestate",
     "core/errors",
+    "guard/index",
     "---Flows---",
     "flows/oauth2",
     "flows/credentials",
