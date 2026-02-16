@@ -37,15 +37,15 @@ let authkestra = Authkestra::builder()
 
 ## Step 3: State Management
 
-Authkestra uses Axum's state management to share authentication logic across handlers. Define an `AppState` and implement `FromRef` for `AuthkestraState`.
+Authkestra uses Axum's state management to share authentication logic across handlers. Define an `AppState` and implement `FromRef` for `Authkestra` or use `AuthkestraState` directly.
 
 ```rust
 #[derive(Clone)]
 struct AppState {
-    authkestra_state: AuthkestraState,
+    authkestra: Authkestra,
 }
 
-impl axum::extract::FromRef<AppState> for AuthkestraState {
+impl axum::extract::FromRef<AppState> for Authkestra {
     fn from_ref(state: &AppState) -> Self {
         state.authkestra_state.clone()
     }
@@ -57,15 +57,14 @@ impl axum::extract::FromRef<AppState> for AuthkestraState {
 Register the Authkestra routes into your Axum router. This automatically handles the OAuth callback and logout endpoints.
 
 ```rust
-let authkestra_state = AuthkestraState { authkestra: authkestra.clone() };
-let state = AppState { authkestra_state };
+let authkestra_state = AuthkestraState { authkestra };
 
 let app = Router::new()
     .route("/", get(index))
     .route("/protected", get(protected))
     .merge(authkestra.axum_router()) // Registers /auth/:provider/login, /auth/:provider/callback, etc.
     .layer(CookieManagerLayer::new())
-    .with_state(state);
+    .with_state(authkestra_state);
 ```
 
 ## Step 5: Handlers
