@@ -1,0 +1,62 @@
+---
+title: Typestate Pattern
+description: Understanding the AuthkestraBuilder typestate pattern for compile-time safety.
+---
+
+Authkestra uses the **Typestate Pattern** in its `AuthkestraBuilder` to ensure that your authentication stack is correctly configured before it can be built. This prevents runtime errors related to missing components like session stores or token managers.
+
+## How it Works
+
+The `Authkestra` struct is generic over two markers: `S` (Session State) and `T` (Token State).
+
+```rust
+pub struct Authkestra<S = Missing, T = Missing> {
+    // ...
+}
+```
+
+These markers can be either:
+- `Missing`: The component is not configured.
+- `Configured`: The component is configured and ready to use.
+
+## The Builder Pattern
+
+When you call `Authkestra::builder()`, you start with an `AuthkestraBuilder<Missing, Missing>`.
+
+### Configuring Sessions
+
+If you call `.session_store(...)`, the builder transitions to `AuthkestraBuilder<Configured, T>`.
+
+```rust
+let authkestra = Authkestra::builder()
+    .session_store(Arc::new(MemoryStore::default()))
+    // Now the first typestate is Configured
+    .build(); 
+```
+
+### Configuring Tokens (JWT)
+
+If you call `.jwt_secret(...)` or `.token_manager(...)`, the builder transitions to `AuthkestraBuilder<S, Configured>`.
+
+```rust
+let authkestra = Authkestra::builder()
+    .jwt_secret(b"your-32-byte-secret-key-goes-here")
+    // Now the second typestate is Configured
+    .build();
+```
+
+## Compile-Time Safety
+
+The `build()` method is implemented for various combinations of typestates. If you try to use an extractor that requires a component you haven't configured, your code will fail to compile.
+
+For example, in **Axum**:
+- `AuthSession` requires the `SessionStore` to be `Configured`.
+- `AuthToken` requires the `TokenManager` to be `Configured`.
+
+By using typestates, Authkestra provides clear compiler errors if you forget to initialize a required part of your authentication strategy.
+
+## Benefits
+
+1.  **No Runtime Panics:** You can't accidentally access a `None` session store at runtime.
+2.  **Explicit Configuration:** The types clearly show what features are enabled in your `Authkestra` instance.
+3.  **Better IDE Support:** Your IDE can guide you on which methods are available based on the current state of the builder.

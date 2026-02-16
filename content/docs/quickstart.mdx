@@ -11,7 +11,7 @@ Add the following to your `Cargo.toml`. We'll use the `axum` and `github` featur
 
 ```toml title="Cargo.toml"
 [dependencies]
-authkestra = { version = "0.1.1", features = ["axum", "github"] }
+authkestra = { version = "0.1.2", features = ["axum", "github"] }
 axum = "0.8.8"
 tokio = { version = "1", features = ["full"] }
 tower-cookies = "0.11.0"
@@ -91,4 +91,4 @@ async fn protected(AuthSession(session): AuthSession) -> impl IntoResponse {
 
 You now have a functional GitHub OAuth flow in Axum! 
 
-For a complete working implementation including environment variable handling and multiple providers, check out the [axum_oauth.rs](https://github.com/marcjazz/authkestra/tree/0.1.1/authkestra-examples/src/bin/axum_oauth.rs) example in the repository.
+For a complete working implementation including environment variable handling and multiple providers, check out the [axum_oauth.rs](https://github.com/marcjazz/authkestra/blob/main/authkestra-examples/src/bin/axum_oauth.rs) example in the repository.

@@ -7,6 +7,7 @@
     "---Core---",
     "core/identity",
     "core/traits",
+    "core/typestate",
     "core/errors",
     "---Flows---",
     "flows/oauth2",

@@ -13,7 +13,7 @@ Add `authkestra` to your `Cargo.toml` with the features you need:
 ```toml title="Cargo.toml"
 [dependencies]
 # Use the facade with the features you need
-authkestra = { version = "0.1.1", features = ["axum", "github"] }
+authkestra = { version = "0.1.2", features = ["axum", "github"] }
 
 # Async runtime
 tokio = { version = "1", features = ["full"] }
@@ -45,7 +45,7 @@ You can combine multiple features:
 
 ```toml title="Cargo.toml"
 [dependencies]
-authkestra = { version = "0.1.1", features = [
+authkestra = { version = "0.1.2", features = [
     "axum",
     "github",
     "google",
@@ -60,7 +60,7 @@ If you need to enable a specific feature inside one of the sub-crates (e.g., if 
 
 ```toml title="Cargo.toml"
 [dependencies]
-authkestra = { version = "0.1.1", features = ["session"] }
+authkestra = { version = "0.1.2", features = ["session"] }
 # Add the sub-crate directly to enable the extra feature
 authkestra-session = { version = "0.1.1", features = ["redis"] }
 
@@ -71,21 +71,21 @@ For advanced users, individual crates can be used independently:
 
 | Crate | Version |
 | ----- | ------- |
-| `authkestra-core` | `0.1.1` |
-| `authkestra-flow` | `0.1.1` |
-| `authkestra-axum` | `0.1.1` |
-| `authkestra-actix` | `0.1.1` |
-| `authkestra-session` | `0.1.1` |
-| `authkestra-token` | `0.1.1` |
-| `authkestra-oidc` | `0.1.1` |
+| `authkestra-core` | `0.1.2` |
+| `authkestra-flow` | `0.1.2` |
+| `authkestra-axum` | `0.1.2` |
+| `authkestra-actix` | `0.1.2` |
+| `authkestra-session` | `0.1.2` |
+| `authkestra-token` | `0.1.2` |
+| `authkestra-oidc` | `0.1.2` |
 
 ```toml title="Cargo.toml"
 [dependencies]
-authkestra-core = "0.1.1"
-authkestra-flow = "0.1.1"
-authkestra-axum = "0.1.1"
-authkestra-providers-github = "0.1.1"
-authkestra-session = { version = "0.1.1", features = ["sqlx-store"] }
+authkestra-core = "0.1.2"
+authkestra-flow = "0.1.2"
+authkestra-axum = "0.1.2"
+authkestra-providers-github = "0.1.2"
+authkestra-session = { version = "0.1.2", features = ["sqlx-store"] }
 ```
 
 <Callout type="tip" title="When to use individual crates">
