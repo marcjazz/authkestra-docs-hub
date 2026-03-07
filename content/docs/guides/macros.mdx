@@ -1,0 +1,142 @@
+---
+title: Macros
+description: Learn how to use Authkestra's derive macros to eliminate boilerplate code.
+---
+
+Authkestra provides procedural macros to reduce boilerplate when integrating with web frameworks. These macros automatically generate the necessary trait implementations, allowing you to focus on your application logic.
+
+## AuthkestraFromRef
+
+The `AuthkestraFromRef` derive macro is designed for Axum applications. It automatically implements the `FromRef` traits required for Authkestra's extractors to work with your custom application state.
+
+### Installation
+
+Enable the `macros` feature in your `Cargo.toml`:
+
+```toml title="Cargo.toml"
+[dependencies]
+authkestra = { version = "0.1.2", features = ["axum", "macros"] }
+# or if using authkestra-axum directly:
+authkestra-axum = { version = "0.1.3", features = ["macros"] }
+```
+
+### Basic Usage
+
+Simply derive `AuthkestraFromRef` on your state struct and mark the Authkestra field with the `#[authkestra]` attribute:
+
+```rust
+use authkestra_axum::AuthkestraFromRef;
+use authkestra_flow::{Authkestra, Configured, Missing};
+use authkestra_session::SessionStore;
+use std::sync::Arc;
+
+#[derive(Clone, AuthkestraFromRef)]
+struct AppState {
+    #[authkestra]
+    auth: Authkestra<Configured<Arc<dyn SessionStore>>, Missing>,
+    db_pool: sqlx::PgPool,
+    redis: redis::Client,
+}
+```
+
+### Generated Implementations
+
+The macro automatically generates four `FromRef` trait implementations:
+
+1. **`FromRef<AppState> for Authkestra<S, T>`**
+   - Extracts the Authkestra instance from your state
+   - Required for all Authkestra extractors
+
+2. **`FromRef<AppState> for Result<Arc<dyn SessionStore>, AuthkestraAxumError>`**
+   - Extracts the session store (when `S: SessionStoreState`)
+   - Required for the `AuthSession` extractor
+
+3. **`FromRef<AppState> for SessionConfig`**
+   - Extracts the session configuration
+   - Required for the `AuthSession` extractor
+
+4. **`FromRef<AppState> for Result<Arc<TokenManager>, AuthkestraAxumError>`**
+   - Extracts the token manager (when `T: TokenManagerState`)
+   - Required for the `AuthToken` extractor
+
+### Type Parameters
+
+The macro works with generic type parameters on your state struct:
+
+```rust
+use authkestra_flow::{Authkestra, Configured, Missing};
+use authkestra_session::SessionStore;
+use std::sync::Arc;
+
+#[derive(Clone, AuthkestraFromRef)]
+struct AppState<S, T> {
+    #[authkestra]
+    auth: Authkestra<S, T>,
+    db_pool: sqlx::PgPool,
+}
+
+// Now you can create state with different configurations
+type SessionState = AppState<Configured<Arc<dyn SessionStore>>, Missing>;
+type TokenState = AppState<Missing, Configured<Arc<TokenManager>>>;
+type FullState = AppState<
+    Configured<Arc<dyn SessionStore>>, 
+    Configured<Arc<TokenManager>>
+>;
+```
+
+### Requirements
+
+For the macro to work correctly:
+
+- Your struct must have exactly one field marked with `#[authkestra]`
+- That field must be of type `Authkestra<S, T>` (with two type parameters)
+- Your struct must implement `Clone`
+
+### Using with Extractors
+
+Once you've derived `AuthkestraFromRef`, you can use all Authkestra extractors in your handlers:
+
+```rust
+use authkestra_axum::{AuthSession, AuthToken};
+use axum::{routing::get, Router};
+
+async fn profile(AuthSession(session): AuthSession) -> String {
+    format!("Welcome, {}!", session.identity.username.unwrap_or_default())
+}
+
+async fn api_handler(AuthToken(claims): AuthToken) -> String {
+    format!("User ID: {}", claims.sub)
+}
+
+fn app(state: AppState) -> Router {
+    Router::new()
+        .route("/profile", get(profile))
+        .route("/api", get(api_handler))
+        .merge(state.auth.axum_router())
+        .with_state(state)
+}
+```
+
+### Manual Implementation Alternative
+
+If you need more control or cannot use the macro (e.g., complex custom logic), you can manually implement the `FromRef` traits.
+
+## Why Use Macros?
+
+Macros provide several benefits:
+
+- **Reduced Boilerplate**: Eliminates repetitive trait implementations
+- **Type Safety**: Generated code respects your type parameters
+- **Maintainability**: Automatically adapts when Authkestra updates
+- **Developer Experience**: Less code to write and maintain
+
+## Best Practices
+
+1. **Use macros for standard integrations**: For most applications, the macro provides everything you need
+2. **Manual implementation for special cases**: Use manual implementations when you need custom behavior
+3. **Keep state simple**: The clearer your state structure, the easier it is to work with
+4. **Documentation**: Even with macros, document your state struct to help other developers
+
+## Future Macros
+
+As Authkestra evolves, additional macros may be introduced to support other frameworks (e.g., Actix-web) or common patterns. Check the documentation for updates.

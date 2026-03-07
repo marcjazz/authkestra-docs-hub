@@ -1,15 +1,16 @@
 // @ts-nocheck
-import { default as __fd_glob_22 } from "../content/docs/meta.json?collection=meta"
-import * as __fd_glob_21 from "../content/docs/sessions/stores.mdx?collection=docs"
-import * as __fd_glob_20 from "../content/docs/sessions/config.mdx?collection=docs"
-import * as __fd_glob_19 from "../content/docs/providers/google.mdx?collection=docs"
-import * as __fd_glob_18 from "../content/docs/providers/github.mdx?collection=docs"
-import * as __fd_glob_17 from "../content/docs/providers/discord.mdx?collection=docs"
-import * as __fd_glob_16 from "../content/docs/guides/token-management.mdx?collection=docs"
-import * as __fd_glob_15 from "../content/docs/guides/oidc.mdx?collection=docs"
-import * as __fd_glob_14 from "../content/docs/frameworks/axum.mdx?collection=docs"
-import * as __fd_glob_13 from "../content/docs/frameworks/actix.mdx?collection=docs"
-import * as __fd_glob_12 from "../content/docs/guard/index.mdx?collection=docs"
+import { default as __fd_glob_23 } from "../content/docs/meta.json?collection=meta"
+import * as __fd_glob_22 from "../content/docs/sessions/stores.mdx?collection=docs"
+import * as __fd_glob_21 from "../content/docs/sessions/config.mdx?collection=docs"
+import * as __fd_glob_20 from "../content/docs/providers/google.mdx?collection=docs"
+import * as __fd_glob_19 from "../content/docs/providers/github.mdx?collection=docs"
+import * as __fd_glob_18 from "../content/docs/providers/discord.mdx?collection=docs"
+import * as __fd_glob_17 from "../content/docs/guides/token-management.mdx?collection=docs"
+import * as __fd_glob_16 from "../content/docs/guides/oidc.mdx?collection=docs"
+import * as __fd_glob_15 from "../content/docs/guides/macros.mdx?collection=docs"
+import * as __fd_glob_14 from "../content/docs/guard/index.mdx?collection=docs"
+import * as __fd_glob_13 from "../content/docs/frameworks/axum.mdx?collection=docs"
+import * as __fd_glob_12 from "../content/docs/frameworks/actix.mdx?collection=docs"
 import * as __fd_glob_11 from "../content/docs/flows/pkce.mdx?collection=docs"
 import * as __fd_glob_10 from "../content/docs/flows/oauth2.mdx?collection=docs"
 import * as __fd_glob_9 from "../content/docs/flows/device-flow.mdx?collection=docs"
@@ -30,6 +31,6 @@ const create = server<typeof Config, import("fumadocs-mdx/runtime/types").Intern
   }
 }>({"doc":{"passthroughs":["extractedReferences"]}});
 
-export const docs = await create.doc("docs", "content/docs", {"index.mdx": __fd_glob_0, "installation.mdx": __fd_glob_1, "quickstart.mdx": __fd_glob_2, "core/errors.mdx": __fd_glob_3, "core/identity.mdx": __fd_glob_4, "core/traits.mdx": __fd_glob_5, "core/typestate.mdx": __fd_glob_6, "flows/client-credentials.mdx": __fd_glob_7, "flows/credentials.mdx": __fd_glob_8, "flows/device-flow.mdx": __fd_glob_9, "flows/oauth2.mdx": __fd_glob_10, "flows/pkce.mdx": __fd_glob_11, "guard/index.mdx": __fd_glob_12, "frameworks/actix.mdx": __fd_glob_13, "frameworks/axum.mdx": __fd_glob_14, "guides/oidc.mdx": __fd_glob_15, "guides/token-management.mdx": __fd_glob_16, "providers/discord.mdx": __fd_glob_17, "providers/github.mdx": __fd_glob_18, "providers/google.mdx": __fd_glob_19, "sessions/config.mdx": __fd_glob_20, "sessions/stores.mdx": __fd_glob_21, });
+export const docs = await create.doc("docs", "content/docs", {"index.mdx": __fd_glob_0, "installation.mdx": __fd_glob_1, "quickstart.mdx": __fd_glob_2, "core/errors.mdx": __fd_glob_3, "core/identity.mdx": __fd_glob_4, "core/traits.mdx": __fd_glob_5, "core/typestate.mdx": __fd_glob_6, "flows/client-credentials.mdx": __fd_glob_7, "flows/credentials.mdx": __fd_glob_8, "flows/device-flow.mdx": __fd_glob_9, "flows/oauth2.mdx": __fd_glob_10, "flows/pkce.mdx": __fd_glob_11, "frameworks/actix.mdx": __fd_glob_12, "frameworks/axum.mdx": __fd_glob_13, "guard/index.mdx": __fd_glob_14, "guides/macros.mdx": __fd_glob_15, "guides/oidc.mdx": __fd_glob_16, "guides/token-management.mdx": __fd_glob_17, "providers/discord.mdx": __fd_glob_18, "providers/github.mdx": __fd_glob_19, "providers/google.mdx": __fd_glob_20, "sessions/config.mdx": __fd_glob_21, "sessions/stores.mdx": __fd_glob_22, });
 
-export const meta = await create.meta("meta", "content/docs", {"meta.json": __fd_glob_22, });
+export const meta = await create.meta("meta", "content/docs", {"meta.json": __fd_glob_23, });

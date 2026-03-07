@@ -7,11 +7,11 @@ This guide walks you through building a simple web application using **Axum** an
 
 ## Step 1: Dependencies
 
-Add the following to your `Cargo.toml`. We'll use the `axum` and `github` features of `authkestra`.
+Add the following to your `Cargo.toml`. We'll use the `axum`, `github`, and `macros` features of `authkestra`.
 
 ```toml title="Cargo.toml"
 [dependencies]
-authkestra = { version = "0.1.2", features = ["axum", "github"] }
+authkestra = { version = "0.1.2", features = ["axum", "github", "macros"] }
 axum = "0.8.8"
 tokio = { version = "1", features = ["full"] }
 tower-cookies = "0.11.0"
@@ -37,34 +37,33 @@ let authkestra = Authkestra::builder()
 
 ## Step 3: State Management
 
-Authkestra uses Axum's state management to share authentication logic across handlers. Define an `AppState` and implement `FromRef` for `Authkestra` or use `AuthkestraState` directly.
+Authkestra uses Axum's state management to share authentication logic across handlers. The easiest way is to use the `AuthkestraFromRef` macro, which automatically generates all required trait implementations.
 
 ```rust
-#[derive(Clone)]
-struct AppState {
-    authkestra: Authkestra,
-}
+use authkestra_axum::AuthkestraFromRef;
 
-impl axum::extract::FromRef<AppState> for Authkestra {
-    fn from_ref(state: &AppState) -> Self {
-        state.authkestra_state.clone()
-    }
+#[derive(Clone, AuthkestraFromRef)]
+struct AppState {
+    #[authkestra]
+    auth: Authkestra,
 }
 ```
+
+The macro generates all the necessary `FromRef` implementations that allow Authkestra's extractors (like `AuthSession`) to work with your custom state. Alternatively, you can use `AuthkestraState` directly if you don't need custom state.
 
 ## Step 4: Routes
 
 Register the Authkestra routes into your Axum router. This automatically handles the OAuth callback and logout endpoints.
 
 ```rust
-let authkestra_state = AuthkestraState { authkestra };
+let state = AppState { auth: authkestra };
 
 let app = Router::new()
     .route("/", get(index))
     .route("/protected", get(protected))
-    .merge(authkestra.axum_router()) // Registers /auth/:provider/login, /auth/:provider/callback, etc.
+    .merge(state.auth.axum_router()) // Registers /auth/:provider/login, /auth/:provider/callback, etc.
     .layer(CookieManagerLayer::new())
-    .with_state(authkestra_state);
+    .with_state(state);
 ```
 
 ## Step 5: Handlers

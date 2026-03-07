@@ -33,6 +33,7 @@ dotenvy = "0.15"
 | ------- | ----------- |
 | `axum` | Axum framework integration with extractors and route helpers |
 | `actix` | Actix-web framework integration |
+| `macros` | Derive macros (e.g., `AuthkestraFromRef`) to reduce boilerplate |
 | `github` | GitHub OAuth provider |
 | `google` | Google OAuth provider |
 | `discord` | Discord OAuth provider |
@@ -48,6 +49,7 @@ You can combine multiple features:
 [dependencies]
 authkestra = { version = "0.1.2", features = [
     "axum",
+    "macros",
     "github",
     "google",
     "discord",

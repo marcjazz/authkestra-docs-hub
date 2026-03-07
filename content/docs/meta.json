@@ -16,6 +16,7 @@
     "flows/device-flow",
     "flows/pkce",
     "---Guides---",
+    "guides/macros",
     "guides/oidc",
     "guides/token-management",
     "guard/index",

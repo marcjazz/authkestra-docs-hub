@@ -31,9 +31,62 @@ let app = Router::new()
     .with_state(state);
 ```
 
-### Integration with Custom State
+### Integration with Custom State (Recommended: Using AuthkestraFromRef)
 
-If your application already manages its own state, you should include `Authkestra` as a field within your custom state struct and implement the `FromRef` trait. This allows Authkestra's extractors (like `AuthSession`) to access the authentication configuration.
+If your application manages its own state, the easiest way to integrate Authkestra is using the `AuthkestraFromRef` derive macro. This macro automatically generates all the required `FromRef` trait implementations needed for Authkestra's extractors to work with your custom state.
+
+#### Quick Start with AuthkestraFromRef
+
+Add the macro feature to your dependencies:
+
+```toml
+[dependencies]
+authkestra-axum = { version = "0.1", features = ["macros"] }
+```
+
+Then simply derive `AuthkestraFromRef` on your state struct and mark the Authkestra field with `#[authkestra]`:
+
+```rust
+use authkestra_axum::AuthkestraFromRef;
+use authkestra_flow::{Authkestra, Configured, Missing};
+use authkestra_session::SessionStore;
+use std::sync::Arc;
+
+#[derive(Clone, AuthkestraFromRef)]
+struct AppState {
+    #[authkestra]
+    auth: Authkestra<Configured<Arc<dyn SessionStore>>, Missing>,
+    db_pool: MyDbPool,
+    // ... other application state
+}
+```
+
+That's it! The macro automatically generates `FromRef` implementations for:
+- `Authkestra<S, T>` - The main Authkestra instance
+- `Result<Arc<dyn SessionStore>, AuthkestraAxumError>` - Required for `AuthSession` extractor
+- `SessionConfig` - Session configuration
+- `Result<Arc<TokenManager>, AuthkestraAxumError>` - Required for `AuthToken` extractor
+
+Now you can use Authkestra extractors in your handlers without any additional boilerplate:
+
+```rust
+use authkestra_axum::AuthSession;
+
+async fn profile(AuthSession(session): AuthSession) -> String {
+    format!("Welcome, {}!", session.identity.username.unwrap_or_default())
+}
+
+fn app(state: AppState) -> Router {
+    Router::new()
+        .route("/profile", get(profile))
+        .merge(state.auth.axum_router())
+        .with_state(state)
+}
+```
+
+### Manual Integration (Alternative)
+
+If you prefer more control or cannot use the macro, you can manually implement the `FromRef` trait. This is useful for custom configurations or advanced use cases.
 
 ```rust
 use authkestra_flow::{Authkestra, SessionStoreState, TokenManagerState, Missing};
